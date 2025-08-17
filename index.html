@@ -412,7 +412,7 @@
         // 初期化時にスコアを読み込み
         loadBestScores();
 
-        // Sound functions
+        // 先に関数を定義
         function playSound(frequency, duration, type = 'sine') {
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -445,6 +445,86 @@
             setTimeout(() => playSound(659, 0.1), 100); // E5
             setTimeout(() => playSound(784, 0.1), 200); // G5
             setTimeout(() => playSound(1047, 0.3), 300); // C6
+        }
+
+        // completeRound関数を先に定義
+        function completeRound() {
+            console.log('completeRound関数が呼ばれました');
+            
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+            
+            const elapsed = (Date.now() - startTime) / 1000;
+            roundTimes.push(elapsed);
+            
+            // 現在の設定での最高スコアを更新
+            const currentBest = bestScores[gameSettings.count][gameSettings.mode];
+            if (currentBest === null || elapsed < currentBest) {
+                bestScores[gameSettings.count][gameSettings.mode] = elapsed;
+                saveBestScores();
+            }
+            
+            playCompleteSound();
+            
+            // 画面の切り替え
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('gameInfo').style.display = 'none';
+            document.getElementById('quitGameBtn').style.display = 'none';
+            document.getElementById('results').style.display = 'block';
+            
+            // 結果の表示
+            document.getElementById('currentTime').textContent = `今回のタイム: ${elapsed.toFixed(1)}秒`;
+            
+            const average = roundTimes.reduce((a, b) => a + b, 0) / roundTimes.length;
+            document.getElementById('averageTime').textContent = `平均タイム: ${average.toFixed(1)}秒`;
+            
+            const bestTime = bestScores[gameSettings.count][gameSettings.mode];
+            document.getElementById('bestTime').textContent = `最高記録 (${gameSettings.count}個-${gameSettings.mode === 'numbers' ? '数字' : 'ABC'}): ${bestTime.toFixed(1)}秒`;
+            
+            const nextBtn = document.getElementById('nextGame');
+            if (currentRound >= gameSettings.rounds) {
+                nextBtn.style.display = 'none';
+                document.querySelector('#results h2').textContent = '🏆 全ゲーム完了！';
+            } else {
+                nextBtn.style.display = 'inline-block';
+                document.querySelector('#results h2').textContent = `🎉 ゲーム ${currentRound}/${gameSettings.rounds} 完了！`;
+            }
+            
+            console.log('結果画面を表示しました');
+        }
+
+        // handleNumberClick関数も先に定義
+        function handleNumberClick(e) {
+            const value = parseInt(e.target.dataset.value);
+            
+            console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
+            
+            if (value === currentNumber) {
+                playCorrectSound();
+                e.target.classList.add('correct');
+                setTimeout(() => {
+                    e.target.style.display = 'none';
+                }, 300);
+                
+                currentNumber++;
+                updateNextNumber();
+                
+                console.log(`次の数字: ${currentNumber}, 最大数: ${gameSettings.count}`);
+                
+                if (currentNumber > gameSettings.count) {
+                    console.log('全ての数字をクリアしました！');
+                    setTimeout(() => {
+                        completeRound();
+                    }, 400); // アニメーション完了を待つ
+                }
+            } else {
+                playWrongSound();
+                e.target.classList.add('wrong');
+                setTimeout(() => {
+                    e.target.classList.remove('wrong');
+                }, 300);
+            }
         }
 
         // Menu handlers
@@ -581,38 +661,6 @@
             }
         }
 
-        function handleNumberClick(e) {
-            const value = parseInt(e.target.dataset.value);
-            
-            console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
-            
-            if (value === currentNumber) {
-                playCorrectSound();
-                e.target.classList.add('correct');
-                setTimeout(() => {
-                    e.target.style.display = 'none';
-                }, 300);
-                
-                currentNumber++;
-                updateNextNumber();
-                
-                console.log(`次の数字: ${currentNumber}, 最大数: ${gameSettings.count}`);
-                
-                if (currentNumber > gameSettings.count) {
-                    console.log('全ての数字をクリアしました！');
-                    setTimeout(() => {
-                        completeRound();
-                    }, 400); // アニメーション完了を待つ
-                }
-            } else {
-                playWrongSound();
-                e.target.classList.add('wrong');
-                setTimeout(() => {
-                    e.target.classList.remove('wrong');
-                }, 300);
-            }
-        }
-
         function updateNextNumber() {
             const display = document.getElementById('nextNumber');
             if (currentNumber <= gameSettings.count) {
@@ -635,52 +683,6 @@
                 const elapsed = (Date.now() - startTime) / 1000;
                 document.getElementById('timer').textContent = `⏱️ ${elapsed.toFixed(1)}秒`;
             }, 100);
-        }
-
-        function completeRound() {
-            console.log('completeRound関数が呼ばれました');
-            
-            if (timerInterval) {
-                clearInterval(timerInterval);
-            }
-            
-            const elapsed = (Date.now() - startTime) / 1000;
-            roundTimes.push(elapsed);
-            
-            // 現在の設定での最高スコアを更新
-            const currentBest = bestScores[gameSettings.count][gameSettings.mode];
-            if (currentBest === null || elapsed < currentBest) {
-                bestScores[gameSettings.count][gameSettings.mode] = elapsed;
-                saveBestScores();
-            }
-            
-            playCompleteSound();
-            
-            // 画面の切り替え
-            document.getElementById('gameArea').style.display = 'none';
-            document.getElementById('gameInfo').style.display = 'none';
-            document.getElementById('quitGameBtn').style.display = 'none';
-            document.getElementById('results').style.display = 'block';
-            
-            // 結果の表示
-            document.getElementById('currentTime').textContent = `今回のタイム: ${elapsed.toFixed(1)}秒`;
-            
-            const average = roundTimes.reduce((a, b) => a + b, 0) / roundTimes.length;
-            document.getElementById('averageTime').textContent = `平均タイム: ${average.toFixed(1)}秒`;
-            
-            const bestTime = bestScores[gameSettings.count][gameSettings.mode];
-            document.getElementById('bestTime').textContent = `最高記録 (${gameSettings.count}個-${gameSettings.mode === 'numbers' ? '数字' : 'ABC'}): ${bestTime.toFixed(1)}秒`;
-            
-            const nextBtn = document.getElementById('nextGame');
-            if (currentRound >= gameSettings.rounds) {
-                nextBtn.style.display = 'none';
-                document.querySelector('#results h2').textContent = '🏆 全ゲーム完了！';
-            } else {
-                nextBtn.style.display = 'inline-block';
-                document.querySelector('#results h2').textContent = `🎉 ゲーム ${currentRound}/${gameSettings.rounds} 完了！`;
-            }
-            
-            console.log('結果画面を表示しました');
         }
 
         document.getElementById('nextGame').addEventListener('click', () => {
