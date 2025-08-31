@@ -46,7 +46,6 @@
             position: fixed;
             width: 100%;
             height: 100%;
-            touch-action: none;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
         }
@@ -87,25 +86,25 @@
         /* 使い方説明 */
         .instructions {
             background: rgba(255, 255, 255, 0.9);
-            padding: 10px 20px;
+            padding: 10px 15px;
             border-radius: 15px;
-            margin: 10px auto;
-            max-width: 600px;
+            margin: 10px 0;
             color: #333;
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 13px;
+            line-height: 1.5;
             box-shadow: 0 3px 15px rgba(0, 0, 0, 0.2);
         }
 
         .instructions h3 {
             color: #667eea;
             margin-bottom: 8px;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .instructions ul {
             margin-left: 20px;
             list-style-type: disc;
+            text-align: left;
         }
 
         #menuToggleBtn {
@@ -138,15 +137,20 @@
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(255, 255, 255, 0.98);
-            padding: 30px;
+            padding: 20px;
+            padding-bottom: 30px;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             z-index: 1000;
             text-align: center;
-            min-width: 320px;
-            max-height: 90vh;
+            width: 90%;
+            max-width: 500px;
+            max-height: 85vh;
             overflow-y: auto;
+            overflow-x: hidden;
             transition: all 0.3s ease;
+            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y;
         }
 
         #menu.hidden {
@@ -154,16 +158,16 @@
         }
 
         .menu-section {
-            margin: 20px 0;
-            padding: 15px;
+            margin: 15px 0;
+            padding: 12px;
             background: rgba(118, 75, 162, 0.1);
             border-radius: 10px;
         }
 
         .menu-section h3 {
             color: #667eea;
-            margin-bottom: 10px;
-            font-size: 16px;
+            margin-bottom: 8px;
+            font-size: 15px;
         }
 
         .option-buttons {
@@ -197,13 +201,14 @@
         }
 
         #startBtn {
-            margin-top: 20px;
-            padding: 15px 40px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            padding: 12px 35px;
             background: linear-gradient(135deg, #f093fb, #f5576c);
             color: white;
             border: none;
             border-radius: 30px;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
@@ -224,6 +229,7 @@
             display: none;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             touch-action: none;
+            z-index: 1;
         }
 
         .number-item {
@@ -284,19 +290,48 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95);
-            padding: 15px 30px;
+            padding: 10px 20px;
             border-radius: 30px;
-            display: none;
             z-index: 100;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            display: none;
         }
 
         #timer, #nextNumber, #gameCounter {
             display: inline-block;
-            margin: 0 15px;
-            font-size: 18px;
+            margin: 0 10px;
+            font-size: 16px;
             font-weight: bold;
             color: #2a5298;
+        }
+
+        #quitGameBtn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 12px 24px;
+            background: #f5576c;
+            color: white;
+            border: 2px solid #fff;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #quitGameBtn:hover {
+            background: #e74c3c;
+            transform: scale(1.05);
+        }
+
+        #quitGameBtn:active {
+            transform: scale(0.95);
         }
 
         #results {
@@ -358,7 +393,7 @@
 
         #fullscreenBtn {
             position: fixed;
-            bottom: 80px;
+            bottom: 20px;
             right: 20px;
             width: 50px;
             height: 50px;
@@ -367,7 +402,7 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 24px;
-            z-index: 1001;
+            z-index: 99999;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             transition: all 0.3s;
         }
@@ -439,9 +474,42 @@
             }
             
             #menu {
-                width: 90%;
-                min-width: auto;
-                padding: 20px;
+                width: 92%;
+                max-height: 80vh;
+                padding: 15px;
+                padding-bottom: 25px;
+            }
+            
+            .menu-section {
+                margin: 12px 0;
+                padding: 10px;
+            }
+            
+            .option-btn {
+                padding: 8px 15px;
+                font-size: 13px;
+                min-width: 70px;
+            }
+            
+            #startBtn {
+                font-size: 16px;
+                padding: 10px 30px;
+            }
+            
+            #gameInfo {
+                flex-wrap: wrap;
+                padding: 8px 15px;
+                gap: 5px;
+            }
+            
+            #timer, #nextNumber, #gameCounter {
+                font-size: 14px;
+                margin: 0 5px;
+            }
+            
+            #quitGameBtn {
+                padding: 6px 12px;
+                font-size: 13px;
             }
             
             .copyright {
@@ -563,10 +631,11 @@
         <span id="nextNumber">次: 1</span>
         <span id="gameCounter">ゲーム: 1/10</span>
     </div>
+    
+    <!-- 終了ボタンを独立した要素として配置 -->
+    <button id="quitGameBtn" style="display: none;">🚪 終了</button>
 
     <div id="bestScore">🏆 最高記録: --</div>
-
-    <div id="quitGameBtn">🚪 終了</div>
 
     <div id="results">
         <h2>🎉 ゲーム完了！</h2>
@@ -822,10 +891,20 @@
 
         function startGame() {
             currentNumber = 1;
+            
+            // ゲーム画面の表示
             document.getElementById('gameArea').style.display = 'block';
             document.getElementById('gameInfo').style.display = 'block';
             document.getElementById('results').style.display = 'none';
-            document.getElementById('quitGameBtn').style.display = 'block';
+            
+            // 終了ボタンを表示
+            const quitBtn = document.getElementById('quitGameBtn');
+            if (quitBtn) {
+                quitBtn.style.display = 'block';
+                console.log('終了ボタンを表示しました');
+            } else {
+                console.error('終了ボタンが見つかりません');
+            }
             
             // 現在の設定での最高スコアを表示
             const currentBest = bestScores[gameSettings.count][gameSettings.mode];
@@ -848,6 +927,10 @@
             const sizeClass = `size-${gameSettings.size}`;
             const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
             const margin = 10;
+            
+            // 終了ボタンとゲーム情報の高さを考慮
+            const topOffset = 80;
+            const bottomOffset = 150;
             
             for (let i = 1; i <= gameSettings.count; i++) {
                 const item = document.createElement('div');
@@ -876,7 +959,7 @@
                 let attempts = 0;
                 while (!positioned && attempts < 100) {
                     const x = Math.random() * (window.innerWidth - itemSize - margin * 2) + margin;
-                    const y = Math.random() * (window.innerHeight - itemSize - margin * 2 - 120) + 80;
+                    const y = Math.random() * (window.innerHeight - itemSize - topOffset - bottomOffset) + topOffset;
                     
                     let overlap = false;
                     for (let other of items) {
@@ -898,7 +981,13 @@
                     attempts++;
                 }
                 
+                // クリックイベントを追加
                 item.addEventListener('click', handleNumberClick);
+                item.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    handleNumberClick(e);
+                }, { passive: false });
+                
                 gameArea.appendChild(item);
             }
         }
@@ -943,42 +1032,77 @@
             document.getElementById('bestScore').style.display = 'none';
         });
 
-        // 終了ボタン
-        const quitBtn = document.getElementById('quitGameBtn');
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        
-        if (isTouchDevice) {
-            quitBtn.addEventListener('touchstart', function(e) {
-                e.stopPropagation();
-                e.preventDefault();
-                handleQuitGame();
-            }, { passive: false });
-        }
-        
-        quitBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            handleQuitGame();
-        });
-        
-        function handleQuitGame() {
-            const shouldQuit = confirm('ゲームを終了してメニューに戻りますか？\n現在の進行状況は保存されません。');
+        // 終了ボタンの処理を簡略化
+        function quitGameImmediately() {
+            console.log('ゲーム即座終了処理');
             
-            if (shouldQuit) {
-                if (timerInterval) {
-                    clearInterval(timerInterval);
-                }
-                document.getElementById('gameArea').style.display = 'none';
-                document.getElementById('gameInfo').style.display = 'none';
-                document.getElementById('results').style.display = 'none';
-                document.getElementById('quitGameBtn').style.display = 'none';
-                document.getElementById('bestScore').style.display = 'none';
-                document.getElementById('menu').style.display = 'block';
-                document.getElementById('menuToggleBtn').style.display = 'block';
-                document.querySelector('.header').style.display = 'flex';
-                currentNumber = 1;
-                startTime = 0;
+            // タイマーをクリア
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
             }
+            
+            // すべての要素を非表示
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('gameInfo').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('quitGameBtn').style.display = 'none';
+            document.getElementById('bestScore').style.display = 'none';
+            
+            // メニューを表示
+            document.getElementById('menu').style.display = 'block';
+            document.getElementById('menu').classList.remove('hidden');
+            document.getElementById('menuToggleBtn').style.display = 'block';
+            document.querySelector('.header').style.display = 'flex';
+            
+            // ゲーム状態をリセット
+            currentNumber = 1;
+            startTime = 0;
+            currentRound = 1;
+            roundTimes = [];
+            menuVisible = true;
+            
+            console.log('メニューに戻りました（即座）');
         }
+        
+        // 終了ボタンの処理
+        function handleQuitGame(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            console.log('終了ボタンがクリックされました');
+            
+            // デバッグ: confirmをスキップして直接終了
+            // 本番環境では以下のコメントを外してください
+            /*
+            const shouldQuit = window.confirm('ゲームを終了してメニューに戻りますか？\n現在の進行状況は保存されません。');
+            if (shouldQuit) {
+                quitGameImmediately();
+            }
+            */
+            
+            // デバッグ用: 直接終了
+            quitGameImmediately();
+            
+            return false;
+        }
+        
+        // グローバルスコープに関数を登録
+        window.handleQuitGame = handleQuitGame;
+        window.quitGameImmediately = quitGameImmediately;
+        
+        // 初期化時にイベントリスナーを設定
+        window.addEventListener('load', function() {
+            const quitBtn = document.getElementById('quitGameBtn');
+            if (quitBtn) {
+                // onclickとaddEventListenerの両方で設定
+                quitBtn.onclick = handleQuitGame;
+                quitBtn.addEventListener('click', handleQuitGame);
+                console.log('終了ボタンのイベントリスナーを設定しました（load時）');
+            }
+        });
 
         // Fullscreen
         document.getElementById('fullscreenBtn').addEventListener('click', () => {
@@ -991,11 +1115,15 @@
             }
         });
 
-        // Prevent scrolling
+        // Prevent scrolling - メニューと終了ボタンは除外
         document.addEventListener('touchmove', (e) => {
-            if (!e.target.closest('#quitGameBtn')) {
-                e.preventDefault();
+            // メニュー内、終了ボタン、メニュー切り替えボタンでのスクロールは許可
+            if (e.target.closest('#menu') || 
+                e.target.closest('#quitGameBtn') || 
+                e.target.closest('#menuToggleBtn')) {
+                return;
             }
+            e.preventDefault();
         }, { passive: false });
 
         // Prevent horizontal scroll
