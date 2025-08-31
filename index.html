@@ -968,30 +968,66 @@
             displayedItems = [];
             
             const sizeClass = `size-${gameSettings.size}`;
-            const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const margin = 15; // 重なりを防ぐため余裕を持たせる
+            const baseSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
+            const margin = 20; // マージンをさらに増やす
             
-            // 画面サイズを取得
-            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
+            // 画面サイズを取得（より確実な方法）
+            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth, screen.width);
+            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight, screen.height);
             
             // 配置可能エリアを定義
-            const topOffset = 80;
-            const bottomOffset = 100;
-            const sideMargin = 10;
+            const topOffset = 90;
+            const bottomOffset = 110;
+            const sideMargin = 15;
             
-            const maxX = screenWidth - itemSize - sideMargin;
-            const minX = sideMargin;
-            const maxY = screenHeight - itemSize - bottomOffset;
-            const minY = topOffset;
+            // 実際の配置可能エリア
+            const availableWidth = screenWidth - (sideMargin * 2);
+            const availableHeight = screenHeight - topOffset - bottomOffset;
             
-            console.log(`配置エリア: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
+            // アイテムサイズを動的に調整（画面に収まるように）
+            const maxItemsPerRow = Math.floor(availableWidth / (baseSize + margin));
+            const maxItemsPerCol = Math.floor(availableHeight / (baseSize + margin));
+            const maxPossibleItems = maxItemsPerRow * maxItemsPerCol;
             
-            // すべての数字の要素を作成
+            let itemSize = baseSize;
+            if (maxPossibleItems < gameSettings.count) {
+                // サイズを調整して全て表示できるようにする
+                const requiredCols = Math.ceil(Math.sqrt(gameSettings.count));
+                const requiredRows = Math.ceil(gameSettings.count / requiredCols);
+                
+                const adjustedSizeX = Math.floor((availableWidth - margin * (requiredCols + 1)) / requiredCols);
+                const adjustedSizeY = Math.floor((availableHeight - margin * (requiredRows + 1)) / requiredRows);
+                
+                itemSize = Math.max(35, Math.min(adjustedSizeX, adjustedSizeY));
+            }
+            
+            console.log(`画面: ${screenWidth}x${screenHeight}, アイテムサイズ: ${itemSize}px`);
+            
+            // ポアソンディスク分布を使用（重なりを完全に防ぐ）
+            const points = poissonDiskSampling(
+                sideMargin,
+                topOffset,
+                screenWidth - sideMargin,
+                screenHeight - bottomOffset,
+                itemSize + margin,
+                gameSettings.count * 10 // 十分な試行回数
+            );
+            
+            // 数字を配置
             for (let i = 1; i <= gameSettings.count; i++) {
                 const item = document.createElement('div');
-                item.className = `number-item ${sizeClass}`;
-                item.dataset.numberValue = i; // 番号を保存
+                
+                // サイズクラスまたは個別設定
+                if (itemSize === baseSize) {
+                    item.className = `number-item ${sizeClass}`;
+                } else {
+                    item.className = 'number-item';
+                    item.style.width = itemSize + 'px';
+                    item.style.height = itemSize + 'px';
+                    item.style.fontSize = Math.floor(itemSize * 0.4) + 'px';
+                }
+                
+                item.dataset.numberValue = i;
                 
                 // テキストを設定
                 if (gameSettings.mode === 'alphabet') {
@@ -1011,50 +1047,27 @@
                 item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
                 item.style.border = '3px solid';
                 
-                // 配置を試みる
-                let positioned = false;
-                const maxAttempts = 100;
-                
-                for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                    const x = Math.random() * (maxX - minX) + minX;
-                    const y = Math.random() * (maxY - minY) + minY;
+                // ポイントから位置を取得
+                if (i - 1 < points.length) {
+                    const point = points[i - 1];
+                    item.style.left = point.x + 'px';
+                    item.style.top = point.y + 'px';
+                    item.style.display = 'flex';
                     
-                    // 他のアイテムとの重なりをチェック
-                    let overlap = false;
-                    for (let other of displayedItems) {
-                        const dx = x - other.x;
-                        const dy = y - other.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < itemSize + margin) {
-                            overlap = true;
-                            break;
-                        }
-                    }
+                    // イベントリスナーを追加
+                    item.addEventListener('click', handleNumberClickWithQueue);
+                    item.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        handleNumberClickWithQueue(e);
+                    }, { passive: false });
                     
-                    if (!overlap) {
-                        item.style.left = x + 'px';
-                        item.style.top = y + 'px';
-                        item.style.display = 'flex'; // 表示
-                        
-                        // イベントリスナーを追加
-                        item.addEventListener('click', handleNumberClickWithQueue);
-                        item.addEventListener('touchstart', function(e) {
-                            e.preventDefault();
-                            handleNumberClickWithQueue(e);
-                        }, { passive: false });
-                        
-                        gameArea.appendChild(item);
-                        displayedItems.push({ x, y, element: item, value: i });
-                        positioned = true;
-                        break;
-                    }
-                }
-                
-                // 配置できなかった場合は待機リストへ
-                if (!positioned) {
-                    item.style.display = 'none'; // 非表示
+                    gameArea.appendChild(item);
+                    displayedItems.push({ x: point.x, y: point.y, element: item, value: i });
+                } else {
+                    // 表示できない場合は待機リストへ
+                    item.style.display = 'none';
                     
-                    // イベントリスナーを追加（後で表示される時のため）
+                    // イベントリスナーを追加
                     item.addEventListener('click', handleNumberClickWithQueue);
                     item.addEventListener('touchstart', function(e) {
                         e.preventDefault();
@@ -1069,14 +1082,114 @@
             
             console.log(`初期表示: ${displayedItems.length}個、待機中: ${waitingNumbers.length}個`);
             
-            // 待機中の数字がある場合は警告
             if (waitingNumbers.length > 0) {
-                console.log(`注意: ${waitingNumbers.length}個の数字が画面に収まりませんでした。数字をタップしてスペースを作ってください。`);
+                console.log(`注意: ${waitingNumbers.length}個の数字が画面に収まりませんでした。`);
             }
+        }
+        
+        // ポアソンディスク分布アルゴリズム（重なりを防ぐ）
+        function poissonDiskSampling(minX, minY, maxX, maxY, minDistance, maxAttempts) {
+            const points = [];
+            const cellSize = minDistance / Math.sqrt(2);
+            const gridWidth = Math.ceil((maxX - minX) / cellSize);
+            const gridHeight = Math.ceil((maxY - minY) / cellSize);
+            const grid = new Array(gridWidth * gridHeight).fill(null);
+            const activeList = [];
+            
+            // 最初のポイントをランダムに配置
+            const firstPoint = {
+                x: minX + Math.random() * (maxX - minX - minDistance),
+                y: minY + Math.random() * (maxY - minY - minDistance)
+            };
+            
+            points.push(firstPoint);
+            activeList.push(firstPoint);
+            
+            const gridX = Math.floor((firstPoint.x - minX) / cellSize);
+            const gridY = Math.floor((firstPoint.y - minY) / cellSize);
+            grid[gridY * gridWidth + gridX] = firstPoint;
+            
+            // アクティブリストが空になるまで続ける
+            while (activeList.length > 0 && points.length < maxAttempts) {
+                const randomIndex = Math.floor(Math.random() * activeList.length);
+                const point = activeList[randomIndex];
+                let found = false;
+                
+                // 現在のポイントの周りに新しいポイントを配置を試みる
+                for (let k = 0; k < 30; k++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = minDistance + Math.random() * minDistance;
+                    
+                    const newX = point.x + Math.cos(angle) * radius;
+                    const newY = point.y + Math.sin(angle) * radius;
+                    
+                    // 境界チェック
+                    if (newX < minX || newX > maxX - minDistance ||
+                        newY < minY || newY > maxY - minDistance) {
+                        continue;
+                    }
+                    
+                    // 近隣のポイントとの距離をチェック
+                    const gx = Math.floor((newX - minX) / cellSize);
+                    const gy = Math.floor((newY - minY) / cellSize);
+                    
+                    let tooClose = false;
+                    for (let dy = -2; dy <= 2; dy++) {
+                        for (let dx = -2; dx <= 2; dx++) {
+                            const nx = gx + dx;
+                            const ny = gy + dy;
+                            
+                            if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) {
+                                continue;
+                            }
+                            
+                            const neighbor = grid[ny * gridWidth + nx];
+                            if (neighbor) {
+                                const dist = Math.sqrt(
+                                    Math.pow(newX - neighbor.x, 2) +
+                                    Math.pow(newY - neighbor.y, 2)
+                                );
+                                if (dist < minDistance) {
+                                    tooClose = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (tooClose) break;
+                    }
+                    
+                    if (!tooClose) {
+                        const newPoint = { x: newX, y: newY };
+                        points.push(newPoint);
+                        activeList.push(newPoint);
+                        grid[gy * gridWidth + gx] = newPoint;
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    activeList.splice(randomIndex, 1);
+                }
+            }
+            
+            // ポイントをシャッフル（ランダムな順序で使用）
+            for (let i = points.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [points[i], points[j]] = [points[j], points[i]];
+            }
+            
+            return points;
         }
         
         // 新しいクリックハンドラー（待機中の数字を表示する機能付き）
         function handleNumberClickWithQueue(e) {
+            // 連続クリック防止
+            if (e.target.dataset.processing === 'true') {
+                return;
+            }
+            e.target.dataset.processing = 'true';
+            
             const value = parseInt(e.target.dataset.value);
             
             console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
@@ -1093,13 +1206,14 @@
                     // アニメーション後に要素を削除
                     setTimeout(() => {
                         e.target.style.display = 'none';
+                        e.target.dataset.processing = 'false';
                         
-                        // 待機中の数字があれば、少し遅延してから表示を試みる
+                        // 待機中の数字があれば、より長い遅延で表示
                         if (waitingNumbers.length > 0) {
-                            // 500ms遅延させてタッチイベントが完全に終了してから表示
+                            // 1秒遅延させてタッチイベントが完全に終了してから表示
                             setTimeout(() => {
                                 tryToDisplayWaitingNumber(removedItem.x, removedItem.y);
-                            }, 500);
+                            }, 1000);
                         }
                     }, 300);
                 }
@@ -1120,6 +1234,7 @@
                 e.target.classList.add('wrong');
                 setTimeout(() => {
                     e.target.classList.remove('wrong');
+                    e.target.dataset.processing = 'false';
                 }, 300);
             }
         }
