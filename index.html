@@ -48,6 +48,7 @@
             height: 100%;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
+            touch-action: manipulation; /* noneから変更 */
         }
 
         /* ヘッダー */
@@ -108,27 +109,7 @@
         }
 
         #menuToggleBtn {
-            position: fixed;
-            top: 70px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 24px;
-            z-index: 1002;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #menuToggleBtn:hover {
-            transform: scale(1.1);
-            background: white;
+            display: none; /* 削除 */
         }
 
         #menu {
@@ -150,7 +131,7 @@
             overflow-x: hidden;
             transition: all 0.3s ease;
             -webkit-overflow-scrolling: touch;
-            touch-action: pan-y;
+            pointer-events: auto !important;
         }
 
         #menu.hidden {
@@ -188,6 +169,9 @@
             font-size: 14px;
             transition: all 0.3s;
             min-width: 80px;
+            pointer-events: auto !important; /* 追加 */
+            touch-action: manipulation; /* 追加 */
+            -webkit-tap-highlight-color: transparent;
         }
 
         .option-btn:hover {
@@ -213,6 +197,9 @@
             cursor: pointer;
             transition: all 0.3s;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            pointer-events: auto !important; /* 追加 */
+            touch-action: manipulation; /* 追加 */
+            -webkit-tap-highlight-color: transparent;
         }
 
         #startBtn:hover {
@@ -571,9 +558,6 @@
         <h1>スピードタッチゲーム</h1>
     </div>
 
-    <!-- メニュー切り替えボタン -->
-    <button id="menuToggleBtn">☰</button>
-
     <div id="menu">
         <!-- 使い方説明 -->
         <div class="instructions">
@@ -668,6 +652,9 @@
             splash.classList.add('show');
             await new Promise(resolve => setTimeout(resolve, 2000));
             splash.classList.remove('show');
+            
+            // スプラッシュスクリーン後にボタンの初期化
+            initializeButtons();
         });
 
         // Audio context for sounds
@@ -692,6 +679,117 @@
         };
         let timerInterval;
         let menuVisible = true;
+
+        // ボタンの初期化を別関数に
+        function initializeButtons() {
+            console.log('ボタンを初期化しています...');
+            
+            // count buttons
+            const countBtns = document.querySelectorAll('.count-btn');
+            console.log('Count buttons found:', countBtns.length);
+            countBtns.forEach(btn => {
+                btn.onclick = function() {
+                    console.log('count-btn clicked:', this.dataset.count);
+                    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameSettings.count = parseInt(this.dataset.count);
+                };
+            });
+            
+            // rounds buttons
+            const roundsBtns = document.querySelectorAll('.rounds-btn');
+            console.log('Rounds buttons found:', roundsBtns.length);
+            roundsBtns.forEach(btn => {
+                btn.onclick = function() {
+                    console.log('rounds-btn clicked:', this.dataset.rounds);
+                    document.querySelectorAll('.rounds-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameSettings.rounds = parseInt(this.dataset.rounds);
+                };
+            });
+
+            // size buttons
+            const sizeBtns = document.querySelectorAll('.size-btn');
+            console.log('Size buttons found:', sizeBtns.length);
+            sizeBtns.forEach(btn => {
+                btn.onclick = function() {
+                    console.log('size-btn clicked:', this.dataset.size);
+                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameSettings.size = this.dataset.size;
+                };
+            });
+
+            // mode buttons
+            const modeBtns = document.querySelectorAll('.mode-btn');
+            console.log('Mode buttons found:', modeBtns.length);
+            modeBtns.forEach(btn => {
+                btn.onclick = function() {
+                    console.log('mode-btn clicked:', this.dataset.mode);
+                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                    gameSettings.mode = this.dataset.mode;
+                };
+            });
+
+            // start button
+            const startBtn = document.getElementById('startBtn');
+            if (startBtn) {
+                console.log('Start button found');
+                startBtn.onclick = function() {
+                    console.log('Start button clicked');
+                    startNewSession();
+                };
+            }
+
+            // 終了ボタン
+            const quitBtn = document.getElementById('quitGameBtn');
+            if (quitBtn) {
+                console.log('Quit button found');
+                quitBtn.onclick = function() {
+                    console.log('Quit button clicked');
+                    handleQuitGame();
+                };
+            }
+
+            // その他のボタン
+            const nextGameBtn = document.getElementById('nextGame');
+            if (nextGameBtn) {
+                nextGameBtn.onclick = function() {
+                    currentRound++;
+                    document.getElementById('gameCounter').textContent = `ゲーム: ${currentRound}/${gameSettings.rounds}`;
+                    startGame();
+                };
+            }
+
+            const restartGameBtn = document.getElementById('restartGame');
+            if (restartGameBtn) {
+                restartGameBtn.onclick = startNewSession;
+            }
+
+            const backToMenuBtn = document.getElementById('backToMenu');
+            if (backToMenuBtn) {
+                backToMenuBtn.onclick = function() {
+                    document.getElementById('results').style.display = 'none';
+                    document.getElementById('menu').style.display = 'block';
+                    document.querySelector('.header').style.display = 'flex';
+                    document.getElementById('bestScore').style.display = 'none';
+                };
+            }
+
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+            if (fullscreenBtn) {
+                fullscreenBtn.onclick = function() {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.log('Fullscreen error:', err);
+                        });
+                    } else {
+                        document.exitFullscreen();
+                    }
+                };
+            }
+        }
 
         // ローカルストレージから最高スコアを読み込み
         function loadBestScores() {
@@ -843,47 +941,14 @@
             }
         }
 
-        // Menu handlers
-        document.querySelectorAll('.count-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
-                this.classList.add('selected');
-                gameSettings.count = parseInt(this.dataset.count);
-            });
-        });
-        
-        document.querySelectorAll('.rounds-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.rounds-btn').forEach(b => b.classList.remove('selected'));
-                this.classList.add('selected');
-                gameSettings.rounds = parseInt(this.dataset.rounds);
-            });
-        });
+        // Menu handlers - シンプルなクリックイベントのみに変更（削除）
 
-        document.querySelectorAll('.size-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-                this.classList.add('selected');
-                gameSettings.size = this.dataset.size;
-            });
-        });
-
-        document.querySelectorAll('.mode-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
-                this.classList.add('selected');
-                gameSettings.mode = this.dataset.mode;
-            });
-        });
-
-        // Start game
-        document.getElementById('startBtn').addEventListener('click', startNewSession);
+        // Start game（削除）
 
         function startNewSession() {
             currentRound = 1;
             roundTimes = [];
             document.getElementById('menu').style.display = 'none';
-            document.getElementById('menuToggleBtn').style.display = 'none';
             document.querySelector('.header').style.display = 'none';
             document.getElementById('gameCounter').textContent = `ゲーム: ${currentRound}/${gameSettings.rounds}`;
             startGame();
@@ -926,69 +991,151 @@
             const items = [];
             const sizeClass = `size-${gameSettings.size}`;
             const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const margin = 10;
+            const margin = 5; // マージンを小さく
             
-            // 終了ボタンとゲーム情報の高さを考慮
-            const topOffset = 80;
-            const bottomOffset = 150;
+            // 画面サイズを取得（より安全な値を使用）
+            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
+            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
             
-            for (let i = 1; i <= gameSettings.count; i++) {
-                const item = document.createElement('div');
-                item.className = `number-item ${sizeClass}`;
+            // 配置可能エリアを定義（上下左右に余白を確保）
+            const topOffset = 70;  // 上部の情報バー用
+            const bottomOffset = 100; // 下部のボタン用
+            const sideMargin = 10;
+            
+            const availableWidth = screenWidth - (sideMargin * 2) - itemSize;
+            const availableHeight = screenHeight - topOffset - bottomOffset - itemSize;
+            
+            console.log(`配置エリア: 幅${availableWidth}px, 高さ${availableHeight}px`);
+            
+            // グリッド配置を試みる
+            const cols = Math.floor(availableWidth / (itemSize + margin));
+            const rows = Math.floor(availableHeight / (itemSize + margin));
+            const maxGridItems = cols * rows;
+            
+            // グリッド配置が可能な場合
+            if (maxGridItems >= gameSettings.count) {
+                console.log(`グリッド配置: ${cols}列 x ${rows}行`);
                 
-                if (gameSettings.mode === 'alphabet') {
-                    if (i <= 26) {
-                        item.textContent = String.fromCharCode(64 + i);
-                    } else {
-                        item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
+                // グリッド位置をランダムに使用
+                const positions = [];
+                for (let row = 0; row < rows; row++) {
+                    for (let col = 0; col < cols; col++) {
+                        positions.push({
+                            x: sideMargin + col * (itemSize + margin),
+                            y: topOffset + row * (itemSize + margin)
+                        });
                     }
-                    item.dataset.value = i;
-                } else {
-                    item.textContent = i;
-                    item.dataset.value = i;
                 }
                 
-                // Random color
-                const hue = Math.random() * 360;
-                item.style.color = `hsl(${hue}, 70%, 40%)`;
-                item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
-                item.style.border = '3px solid';
+                // ポジションをシャッフル
+                for (let i = positions.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [positions[i], positions[j]] = [positions[j], positions[i]];
+                }
                 
-                // Random position without overlap
-                let positioned = false;
-                let attempts = 0;
-                while (!positioned && attempts < 100) {
-                    const x = Math.random() * (window.innerWidth - itemSize - margin * 2) + margin;
-                    const y = Math.random() * (window.innerHeight - itemSize - topOffset - bottomOffset) + topOffset;
+                // 数字を配置
+                for (let i = 1; i <= gameSettings.count; i++) {
+                    const item = document.createElement('div');
+                    item.className = `number-item ${sizeClass}`;
                     
-                    let overlap = false;
-                    for (let other of items) {
-                        const dx = x - other.x;
-                        const dy = y - other.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < itemSize + margin) {
-                            overlap = true;
-                            break;
+                    if (gameSettings.mode === 'alphabet') {
+                        if (i <= 26) {
+                            item.textContent = String.fromCharCode(64 + i);
+                        } else {
+                            item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
                         }
+                    } else {
+                        item.textContent = i;
                     }
+                    item.dataset.value = i;
                     
-                    if (!overlap) {
-                        item.style.left = x + 'px';
-                        item.style.top = y + 'px';
-                        items.push({ x, y, element: item });
-                        positioned = true;
-                    }
-                    attempts++;
+                    // ランダムな色
+                    const hue = Math.random() * 360;
+                    item.style.color = `hsl(${hue}, 70%, 40%)`;
+                    item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
+                    item.style.border = '3px solid';
+                    
+                    // 位置を設定
+                    const pos = positions[i - 1];
+                    item.style.left = pos.x + 'px';
+                    item.style.top = pos.y + 'px';
+                    
+                    // イベントリスナーを追加
+                    item.addEventListener('click', handleNumberClick);
+                    item.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        handleNumberClick(e);
+                    }, { passive: false });
+                    
+                    gameArea.appendChild(item);
                 }
+            } else {
+                // グリッドに収まらない場合は、サイズを自動調整
+                console.log('画面に収まらないため、サイズを調整します');
                 
-                // クリックイベントを追加
-                item.addEventListener('click', handleNumberClick);
-                item.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    handleNumberClick(e);
-                }, { passive: false });
+                // より小さいサイズで再計算
+                const adjustedSize = Math.floor(Math.min(
+                    (availableWidth - margin * (Math.ceil(Math.sqrt(gameSettings.count)) - 1)) / Math.ceil(Math.sqrt(gameSettings.count)),
+                    (availableHeight - margin * (Math.ceil(Math.sqrt(gameSettings.count)) - 1)) / Math.ceil(Math.sqrt(gameSettings.count))
+                ));
                 
-                gameArea.appendChild(item);
+                const adjustedItemSize = Math.max(30, Math.min(adjustedSize, itemSize)); // 最小30px
+                
+                const adjustedCols = Math.floor(availableWidth / (adjustedItemSize + margin));
+                const adjustedRows = Math.ceil(gameSettings.count / adjustedCols);
+                
+                console.log(`調整後: ${adjustedItemSize}px, ${adjustedCols}列 x ${adjustedRows}行`);
+                
+                for (let i = 1; i <= gameSettings.count; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'number-item';
+                    
+                    // サイズを個別に設定
+                    item.style.width = adjustedItemSize + 'px';
+                    item.style.height = adjustedItemSize + 'px';
+                    item.style.fontSize = Math.floor(adjustedItemSize * 0.4) + 'px';
+                    
+                    if (gameSettings.mode === 'alphabet') {
+                        if (i <= 26) {
+                            item.textContent = String.fromCharCode(64 + i);
+                        } else {
+                            item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
+                        }
+                    } else {
+                        item.textContent = i;
+                    }
+                    item.dataset.value = i;
+                    
+                    // ランダムな色
+                    const hue = Math.random() * 360;
+                    item.style.color = `hsl(${hue}, 70%, 40%)`;
+                    item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
+                    item.style.border = '2px solid';
+                    
+                    // グリッド位置を計算
+                    const gridIndex = i - 1;
+                    const col = gridIndex % adjustedCols;
+                    const row = Math.floor(gridIndex / adjustedCols);
+                    
+                    // ランダムな小さなオフセットを追加
+                    const randomOffsetX = (Math.random() - 0.5) * margin;
+                    const randomOffsetY = (Math.random() - 0.5) * margin;
+                    
+                    const x = sideMargin + col * (adjustedItemSize + margin) + randomOffsetX;
+                    const y = topOffset + row * (adjustedItemSize + margin) + randomOffsetY;
+                    
+                    item.style.left = Math.max(sideMargin, Math.min(x, availableWidth)) + 'px';
+                    item.style.top = Math.max(topOffset, Math.min(y, screenHeight - bottomOffset - adjustedItemSize)) + 'px';
+                    
+                    // イベントリスナーを追加
+                    item.addEventListener('click', handleNumberClick);
+                    item.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        handleNumberClick(e);
+                    }, { passive: false });
+                    
+                    gameArea.appendChild(item);
+                }
             }
         }
 
@@ -1027,12 +1174,11 @@
         document.getElementById('backToMenu').addEventListener('click', () => {
             document.getElementById('results').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
-            document.getElementById('menuToggleBtn').style.display = 'block';
             document.querySelector('.header').style.display = 'flex';
             document.getElementById('bestScore').style.display = 'none';
         });
 
-        // 終了ボタンの処理を簡略化
+        // 終了ボタンの処理を簡略化（そのまま維持）
         function quitGameImmediately() {
             console.log('ゲーム即座終了処理');
             
@@ -1052,7 +1198,6 @@
             // メニューを表示
             document.getElementById('menu').style.display = 'block';
             document.getElementById('menu').classList.remove('hidden');
-            document.getElementById('menuToggleBtn').style.display = 'block';
             document.querySelector('.header').style.display = 'flex';
             
             // ゲーム状態をリセット
@@ -1092,17 +1237,6 @@
         // グローバルスコープに関数を登録
         window.handleQuitGame = handleQuitGame;
         window.quitGameImmediately = quitGameImmediately;
-        
-        // 初期化時にイベントリスナーを設定
-        window.addEventListener('load', function() {
-            const quitBtn = document.getElementById('quitGameBtn');
-            if (quitBtn) {
-                // onclickとaddEventListenerの両方で設定
-                quitBtn.onclick = handleQuitGame;
-                quitBtn.addEventListener('click', handleQuitGame);
-                console.log('終了ボタンのイベントリスナーを設定しました（load時）');
-            }
-        });
 
         // Fullscreen
         document.getElementById('fullscreenBtn').addEventListener('click', () => {
@@ -1115,16 +1249,8 @@
             }
         });
 
-        // Prevent scrolling - メニューと終了ボタンは除外
-        document.addEventListener('touchmove', (e) => {
-            // メニュー内、終了ボタン、メニュー切り替えボタンでのスクロールは許可
-            if (e.target.closest('#menu') || 
-                e.target.closest('#quitGameBtn') || 
-                e.target.closest('#menuToggleBtn')) {
-                return;
-            }
-            e.preventDefault();
-        }, { passive: false });
+        // Prevent scrolling - 完全に削除してタッチイベントを正常化
+        // touchmoveイベントの制御を削除して、すべてのタッチ操作を有効に
 
         // Prevent horizontal scroll
         window.addEventListener('scroll', () => {
