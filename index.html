@@ -3,8 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- PWA設定 -->
+    <meta name="application-name" content="スピードタッチ">
+    <meta name="apple-mobile-web-app-title" content="スピードタッチ">
+    
+    <!-- 基本アイコン -->
+    <link rel="icon" href="FNT512.png">
+    <link rel="apple-touch-icon" href="FNT512.png">
+    
+    <!-- フルパスでアイコンを指定 -->
+    <link rel="apple-touch-icon" sizes="180x180" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="FNT512.png">
+    
+    <!-- テーマカラー -->
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
     <title>数字タッチスピードゲーム</title>
     <style>
         * {
@@ -14,14 +35,101 @@
             user-select: none;
             -webkit-user-select: none;
             -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             overflow: hidden;
-            position: relative;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* ヘッダー */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            min-width: 320px;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            background: white;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .header h1 {
+            color: #764ba2;
+            font-size: 24px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin: 0;
+        }
+
+        /* 使い方説明 */
+        .instructions {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 20px;
+            border-radius: 15px;
+            margin: 10px auto;
+            max-width: 600px;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            list-style-type: disc;
+        }
+
+        #menuToggleBtn {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 1002;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #menuToggleBtn:hover {
+            transform: scale(1.1);
+            background: white;
         }
 
         #menu {
@@ -29,20 +137,20 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             padding: 30px;
             border-radius: 20px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             z-index: 1000;
             text-align: center;
             min-width: 320px;
+            max-height: 90vh;
+            overflow-y: auto;
+            transition: all 0.3s ease;
         }
 
-        #menu h1 {
-            color: #764ba2;
-            margin-bottom: 25px;
-            font-size: 28px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        #menu.hidden {
+            display: none;
         }
 
         .menu-section {
@@ -108,11 +216,14 @@
         }
 
         #gameArea {
-            position: relative;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
             display: none;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            touch-action: none;
         }
 
         .number-item {
@@ -127,6 +238,7 @@
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             background: white;
             animation: appear 0.5s ease-out;
+            touch-action: manipulation;
         }
 
         @keyframes appear {
@@ -192,7 +304,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             padding: 30px;
             border-radius: 20px;
             display: none;
@@ -246,11 +358,11 @@
 
         #fullscreenBtn {
             position: fixed;
-            bottom: 20px;
+            bottom: 80px;
             right: 20px;
             width: 50px;
             height: 50px;
-            background: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.95);
             border: none;
             border-radius: 50%;
             cursor: pointer;
@@ -267,10 +379,10 @@
 
         #quitGameBtn {
             position: fixed;
-            bottom: 20px;
+            bottom: 80px;
             left: 20px;
             padding: 12px 24px;
-            background: rgba(245, 87, 108, 0.9);
+            background: rgba(245, 87, 108, 0.95);
             color: white;
             border: none;
             border-radius: 25px;
@@ -282,7 +394,6 @@
             transition: all 0.3s;
             display: none;
             pointer-events: auto !important;
-            -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
         }
 
@@ -292,14 +403,120 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
 
+        /* 著作権表記 */
+        .copyright {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            padding: 5px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            z-index: 100;
+            white-space: nowrap;
+        }
+
         .size-small { width: 50px; height: 50px; font-size: 20px; }
         .size-medium { width: 70px; height: 70px; font-size: 28px; }
         .size-large { width: 90px; height: 90px; font-size: 36px; }
+
+        /* モバイル対応 */
+        @media (max-width: 600px) {
+            .header {
+                width: 95%;
+                min-width: auto;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .logo {
+                height: 35px;
+            }
+            
+            #menu {
+                width: 90%;
+                min-width: auto;
+                padding: 20px;
+            }
+            
+            .copyright {
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+        }
+
+        /* スプラッシュスクリーン */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        .splash-screen.show {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .splash-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 30px;
+        }
+
+        .splash-title {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .splash-subtitle {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+    <!-- ヘッダー -->
+    <div class="header">
+        <img src="FNT512.png" alt="FNT Logo" class="logo">
+        <h1>スピードタッチゲーム</h1>
+    </div>
+
+    <!-- メニュー切り替えボタン -->
+    <button id="menuToggleBtn">☰</button>
+
     <div id="menu">
-        <h1>🎯 スピードタッチゲーム</h1>
+        <!-- 使い方説明 -->
+        <div class="instructions">
+            <h3>📖 使い方</h3>
+            <ul>
+                <li>画面に散らばった数字を1から順番にタッチ</li>
+                <li>全ての数字をタッチするまでの時間を競います</li>
+                <li>設定で数字の個数やゲーム回数を変更可能</li>
+                <li>アルファベットモードも選択できます</li>
+            </ul>
+        </div>
         
         <div class="menu-section">
             <h3>🔢 数字の個数</h3>
@@ -349,7 +566,7 @@
 
     <div id="bestScore">🏆 最高記録: --</div>
 
-    <div id="quitGameBtn" style="display: none;">🚪 終了</div>
+    <div id="quitGameBtn">🚪 終了</div>
 
     <div id="results">
         <h2>🎉 ゲーム完了！</h2>
@@ -363,7 +580,27 @@
 
     <button id="fullscreenBtn">⛶</button>
 
+    <!-- 著作権表記 -->
+    <div class="copyright">
+        © Functional Neuro Training
+    </div>
+
+    <!-- スプラッシュスクリーン -->
+    <div class="splash-screen" id="splashScreen">
+        <img src="FNT512.png" alt="Logo" class="splash-logo">
+        <div class="splash-title">Functional Neuro Training</div>
+        <div class="splash-subtitle">Speed Touch</div>
+    </div>
+
     <script>
+        // スプラッシュスクリーン表示
+        window.addEventListener('load', async () => {
+            const splash = document.getElementById('splashScreen');
+            splash.classList.add('show');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            splash.classList.remove('show');
+        });
+
         // Audio context for sounds
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = new AudioContext();
@@ -385,8 +622,9 @@
             40: { numbers: null, alphabet: null }
         };
         let timerInterval;
+        let menuVisible = true;
 
-        // ローカルストレージから最高スコアを読み込み（エラーハンドリング付き）
+        // ローカルストレージから最高スコアを読み込み
         function loadBestScores() {
             try {
                 const saved = localStorage.getItem('speedTouchBestScores');
@@ -395,24 +633,35 @@
                 }
             } catch (e) {
                 console.log('ローカルストレージの読み込みエラー:', e);
-                // ローカルストレージが使えない場合はメモリ上で管理
             }
         }
 
-        // 最高スコアを保存（エラーハンドリング付き）
+        // 最高スコアを保存
         function saveBestScores() {
             try {
                 localStorage.setItem('speedTouchBestScores', JSON.stringify(bestScores));
             } catch (e) {
                 console.log('ローカルストレージの保存エラー:', e);
-                // 保存できない場合は無視
             }
         }
 
         // 初期化時にスコアを読み込み
         loadBestScores();
 
-        // 先に関数を定義
+        // メニュー切り替え
+        document.getElementById('menuToggleBtn').addEventListener('click', () => {
+            const menu = document.getElementById('menu');
+            menuVisible = !menuVisible;
+            if (menuVisible) {
+                menu.classList.remove('hidden');
+                document.getElementById('menuToggleBtn').textContent = '☰';
+            } else {
+                menu.classList.add('hidden');
+                document.getElementById('menuToggleBtn').textContent = '☰';
+            }
+        });
+
+        // Sound functions
         function playSound(frequency, duration, type = 'sine') {
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
@@ -447,7 +696,7 @@
             setTimeout(() => playSound(1047, 0.3), 300); // C6
         }
 
-        // completeRound関数を先に定義
+        // completeRound関数
         function completeRound() {
             console.log('completeRound関数が呼ばれました');
             
@@ -490,11 +739,9 @@
                 nextBtn.style.display = 'inline-block';
                 document.querySelector('#results h2').textContent = `🎉 ゲーム ${currentRound}/${gameSettings.rounds} 完了！`;
             }
-            
-            console.log('結果画面を表示しました');
         }
 
-        // handleNumberClick関数も先に定義
+        // handleNumberClick関数
         function handleNumberClick(e) {
             const value = parseInt(e.target.dataset.value);
             
@@ -516,7 +763,7 @@
                     console.log('全ての数字をクリアしました！');
                     setTimeout(() => {
                         completeRound();
-                    }, 400); // アニメーション完了を待つ
+                    }, 400);
                 }
             } else {
                 playWrongSound();
@@ -533,12 +780,6 @@
                 document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
                 this.classList.add('selected');
                 gameSettings.count = parseInt(this.dataset.count);
-                
-                // モードボタンのテキストを更新
-                const modeButtons = document.querySelectorAll('.mode-btn');
-                modeButtons[0].textContent = `数字 (1-${gameSettings.count})`;
-                const endLetter = String.fromCharCode(64 + gameSettings.count);
-                modeButtons[1].textContent = `アルファベット (A-${endLetter})`;
             });
         });
         
@@ -573,6 +814,8 @@
             currentRound = 1;
             roundTimes = [];
             document.getElementById('menu').style.display = 'none';
+            document.getElementById('menuToggleBtn').style.display = 'none';
+            document.querySelector('.header').style.display = 'none';
             document.getElementById('gameCounter').textContent = `ゲーム: ${currentRound}/${gameSettings.rounds}`;
             startGame();
         }
@@ -588,7 +831,7 @@
             const currentBest = bestScores[gameSettings.count][gameSettings.mode];
             if (currentBest !== null) {
                 document.getElementById('bestScore').style.display = 'block';
-                document.getElementById('bestScore').textContent = `🏆 最高記録 (${gameSettings.count}個-${gameSettings.mode === 'numbers' ? '数字' : 'ABC'}): ${currentBest.toFixed(1)}秒`;
+                document.getElementById('bestScore').textContent = `🏆 最高記録: ${currentBest.toFixed(1)}秒`;
             }
             
             generateNumbers();
@@ -611,7 +854,6 @@
                 item.className = `number-item ${sizeClass}`;
                 
                 if (gameSettings.mode === 'alphabet') {
-                    // 40個の場合はA-Z(26) + AA-AN(14)のように表示
                     if (i <= 26) {
                         item.textContent = String.fromCharCode(64 + i);
                     } else {
@@ -634,7 +876,7 @@
                 let attempts = 0;
                 while (!positioned && attempts < 100) {
                     const x = Math.random() * (window.innerWidth - itemSize - margin * 2) + margin;
-                    const y = Math.random() * (window.innerHeight - itemSize - margin * 2 - 100) + 80;
+                    const y = Math.random() * (window.innerHeight - itemSize - margin * 2 - 120) + 80;
                     
                     let overlap = false;
                     for (let other of items) {
@@ -696,40 +938,32 @@
         document.getElementById('backToMenu').addEventListener('click', () => {
             document.getElementById('results').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
+            document.getElementById('menuToggleBtn').style.display = 'block';
+            document.querySelector('.header').style.display = 'flex';
             document.getElementById('bestScore').style.display = 'none';
         });
 
-        // 終了ボタンを最初に設定
+        // 終了ボタン
         const quitBtn = document.getElementById('quitGameBtn');
-        
-        // タッチデバイスかどうかを判定
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         
         if (isTouchDevice) {
-            // タッチデバイスの場合
             quitBtn.addEventListener('touchstart', function(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                console.log('終了ボタンがタッチされました');
                 handleQuitGame();
             }, { passive: false });
         }
         
-        // 通常のクリックイベント（PCでも動作）
         quitBtn.addEventListener('click', function(e) {
             e.stopPropagation();
-            console.log('終了ボタンがクリックされました');
             handleQuitGame();
         });
         
         function handleQuitGame() {
-            console.log('handleQuitGame関数が呼ばれました');
-            
-            // confirmダイアログを復活
             const shouldQuit = confirm('ゲームを終了してメニューに戻りますか？\n現在の進行状況は保存されません。');
             
             if (shouldQuit) {
-                console.log('ゲーム終了処理を開始');
                 if (timerInterval) {
                     clearInterval(timerInterval);
                 }
@@ -739,9 +973,10 @@
                 document.getElementById('quitGameBtn').style.display = 'none';
                 document.getElementById('bestScore').style.display = 'none';
                 document.getElementById('menu').style.display = 'block';
+                document.getElementById('menuToggleBtn').style.display = 'block';
+                document.querySelector('.header').style.display = 'flex';
                 currentNumber = 1;
                 startTime = 0;
-                console.log('メニューに戻りました');
             }
         }
 
@@ -756,21 +991,37 @@
             }
         });
 
-        // Prevent scrolling - 終了ボタンは除外
+        // Prevent scrolling
         document.addEventListener('touchmove', (e) => {
             if (!e.target.closest('#quitGameBtn')) {
                 e.preventDefault();
             }
         }, { passive: false });
 
+        // Prevent horizontal scroll
+        window.addEventListener('scroll', () => {
+            if (window.scrollX > 0) {
+                window.scrollTo(0, window.scrollY);
+            }
+        });
+
         // Handle visibility change
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 clearInterval(timerInterval);
-            } else if (startTime && currentNumber <= 20) {
+            } else if (startTime && currentNumber <= gameSettings.count) {
                 updateTimer();
             }
         });
+
+        // Service Worker登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(err => console.log('SW registration failed'));
+            });
+        }
     </script>
 </body>
 </html>
