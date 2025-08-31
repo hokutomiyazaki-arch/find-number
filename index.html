@@ -1094,9 +1094,12 @@
                     setTimeout(() => {
                         e.target.style.display = 'none';
                         
-                        // 待機中の数字があれば表示を試みる
+                        // 待機中の数字があれば、少し遅延してから表示を試みる
                         if (waitingNumbers.length > 0) {
-                            tryToDisplayWaitingNumber(removedItem.x, removedItem.y);
+                            // 500ms遅延させてタッチイベントが完全に終了してから表示
+                            setTimeout(() => {
+                                tryToDisplayWaitingNumber(removedItem.x, removedItem.y);
+                            }, 500);
                         }
                     }, 300);
                 }
@@ -1141,21 +1144,39 @@
             const waitingItem = waitingNumbers[0];
             const value = parseInt(waitingItem.dataset.value);
             
-            // 空いた場所の近くに配置を試みる
-            const positions = [
-                { x: freedX, y: freedY }, // 空いた場所
-                { x: freedX + itemSize + margin, y: freedY },
-                { x: freedX - itemSize - margin, y: freedY },
-                { x: freedX, y: freedY + itemSize + margin },
-                { x: freedX, y: freedY - itemSize - margin },
-            ];
+            // タッチした場所から離れた位置を優先的に選択
+            const positions = [];
             
-            // ランダムな位置も追加
-            for (let i = 0; i < 20; i++) {
-                positions.push({
-                    x: Math.random() * (maxX - minX) + minX,
-                    y: Math.random() * (maxY - minY) + minY
-                });
+            // タッチ位置から離れた四隅を優先
+            positions.push(
+                { x: minX, y: minY }, // 左上
+                { x: maxX, y: minY }, // 右上
+                { x: minX, y: maxY }, // 左下
+                { x: maxX, y: maxY }  // 右下
+            );
+            
+            // タッチ位置から離れた場所を追加
+            const safeDistance = itemSize * 2 + margin;
+            positions.push(
+                { x: freedX + safeDistance, y: freedY },
+                { x: freedX - safeDistance, y: freedY },
+                { x: freedX, y: freedY + safeDistance },
+                { x: freedX, y: freedY - safeDistance },
+                { x: freedX + safeDistance, y: freedY + safeDistance },
+                { x: freedX - safeDistance, y: freedY - safeDistance },
+                { x: freedX + safeDistance, y: freedY - safeDistance },
+                { x: freedX - safeDistance, y: freedY + safeDistance }
+            );
+            
+            // ランダムな位置も追加（ただしタッチ位置から離れた場所）
+            for (let i = 0; i < 30; i++) {
+                let x, y;
+                do {
+                    x = Math.random() * (maxX - minX) + minX;
+                    y = Math.random() * (maxY - minY) + minY;
+                } while (Math.sqrt((x - freedX) ** 2 + (y - freedY) ** 2) < safeDistance);
+                
+                positions.push({ x, y });
             }
             
             // 配置を試みる
@@ -1181,13 +1202,21 @@
                     // 配置成功
                     waitingItem.style.left = pos.x + 'px';
                     waitingItem.style.top = pos.y + 'px';
+                    
+                    // 少し遅延してから表示（フェードイン効果）
+                    waitingItem.style.opacity = '0';
                     waitingItem.style.display = 'flex';
+                    
+                    setTimeout(() => {
+                        waitingItem.style.transition = 'opacity 0.3s ease-in';
+                        waitingItem.style.opacity = '1';
+                    }, 100);
                     
                     // リストを更新
                     waitingNumbers.shift();
                     displayedItems.push({ x: pos.x, y: pos.y, element: waitingItem, value: value });
                     
-                    console.log(`${value}番を新たに表示しました。残り待機: ${waitingNumbers.length}個`);
+                    console.log(`${value}番を新たに表示しました（タッチ位置から離れた場所）。残り待機: ${waitingNumbers.length}個`);
                     
                     // アニメーション効果
                     waitingItem.style.animation = 'appear 0.5s ease-out';
