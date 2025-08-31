@@ -988,155 +988,147 @@
             const gameArea = document.getElementById('gameArea');
             gameArea.innerHTML = '';
             
-            const items = [];
             const sizeClass = `size-${gameSettings.size}`;
             const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const margin = 5; // マージンを小さく
+            const margin = 10;
             
-            // 画面サイズを取得（より安全な値を使用）
+            // 画面サイズを取得
             const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
             const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
             
-            // 配置可能エリアを定義（上下左右に余白を確保）
-            const topOffset = 70;  // 上部の情報バー用
-            const bottomOffset = 100; // 下部のボタン用
+            // 配置可能エリアを定義
+            const topOffset = 80;
+            const bottomOffset = 100;
             const sideMargin = 10;
             
-            const availableWidth = screenWidth - (sideMargin * 2) - itemSize;
-            const availableHeight = screenHeight - topOffset - bottomOffset - itemSize;
+            const maxX = screenWidth - itemSize - sideMargin;
+            const minX = sideMargin;
+            const maxY = screenHeight - itemSize - bottomOffset;
+            const minY = topOffset;
             
-            console.log(`配置エリア: 幅${availableWidth}px, 高さ${availableHeight}px`);
+            console.log(`配置エリア: X(${minX}-${maxX}), Y(${minY}-${maxY})`);
             
-            // グリッド配置を試みる
-            const cols = Math.floor(availableWidth / (itemSize + margin));
-            const rows = Math.floor(availableHeight / (itemSize + margin));
-            const maxGridItems = cols * rows;
+            const items = [];
+            let failedAttempts = 0;
+            const maxFailedAttempts = gameSettings.count * 3;
             
-            // グリッド配置が可能な場合
-            if (maxGridItems >= gameSettings.count) {
-                console.log(`グリッド配置: ${cols}列 x ${rows}行`);
+            for (let i = 1; i <= gameSettings.count; i++) {
+                const item = document.createElement('div');
+                item.className = `number-item ${sizeClass}`;
                 
-                // グリッド位置をランダムに使用
-                const positions = [];
-                for (let row = 0; row < rows; row++) {
-                    for (let col = 0; col < cols; col++) {
-                        positions.push({
-                            x: sideMargin + col * (itemSize + margin),
-                            y: topOffset + row * (itemSize + margin)
-                        });
-                    }
-                }
-                
-                // ポジションをシャッフル
-                for (let i = positions.length - 1; i > 0; i--) {
-                    const j = Math.floor(Math.random() * (i + 1));
-                    [positions[i], positions[j]] = [positions[j], positions[i]];
-                }
-                
-                // 数字を配置
-                for (let i = 1; i <= gameSettings.count; i++) {
-                    const item = document.createElement('div');
-                    item.className = `number-item ${sizeClass}`;
-                    
-                    if (gameSettings.mode === 'alphabet') {
-                        if (i <= 26) {
-                            item.textContent = String.fromCharCode(64 + i);
-                        } else {
-                            item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
-                        }
+                // テキストを設定
+                if (gameSettings.mode === 'alphabet') {
+                    if (i <= 26) {
+                        item.textContent = String.fromCharCode(64 + i);
                     } else {
-                        item.textContent = i;
+                        item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
                     }
-                    item.dataset.value = i;
-                    
-                    // ランダムな色
-                    const hue = Math.random() * 360;
-                    item.style.color = `hsl(${hue}, 70%, 40%)`;
-                    item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
-                    item.style.border = '3px solid';
-                    
-                    // 位置を設定
-                    const pos = positions[i - 1];
-                    item.style.left = pos.x + 'px';
-                    item.style.top = pos.y + 'px';
-                    
-                    // イベントリスナーを追加
-                    item.addEventListener('click', handleNumberClick);
-                    item.addEventListener('touchstart', function(e) {
-                        e.preventDefault();
-                        handleNumberClick(e);
-                    }, { passive: false });
-                    
-                    gameArea.appendChild(item);
+                } else {
+                    item.textContent = i;
                 }
-            } else {
-                // グリッドに収まらない場合は、サイズを自動調整
-                console.log('画面に収まらないため、サイズを調整します');
+                item.dataset.value = i;
                 
-                // より小さいサイズで再計算
-                const adjustedSize = Math.floor(Math.min(
-                    (availableWidth - margin * (Math.ceil(Math.sqrt(gameSettings.count)) - 1)) / Math.ceil(Math.sqrt(gameSettings.count)),
-                    (availableHeight - margin * (Math.ceil(Math.sqrt(gameSettings.count)) - 1)) / Math.ceil(Math.sqrt(gameSettings.count))
-                ));
+                // ランダムな色
+                const hue = Math.random() * 360;
+                item.style.color = `hsl(${hue}, 70%, 40%)`;
+                item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
+                item.style.border = '3px solid';
                 
-                const adjustedItemSize = Math.max(30, Math.min(adjustedSize, itemSize)); // 最小30px
+                // ランダムな位置を試みる
+                let positioned = false;
+                let attempts = 0;
+                const maxAttempts = 50;
                 
-                const adjustedCols = Math.floor(availableWidth / (adjustedItemSize + margin));
-                const adjustedRows = Math.ceil(gameSettings.count / adjustedCols);
-                
-                console.log(`調整後: ${adjustedItemSize}px, ${adjustedCols}列 x ${adjustedRows}行`);
-                
-                for (let i = 1; i <= gameSettings.count; i++) {
-                    const item = document.createElement('div');
-                    item.className = 'number-item';
+                while (!positioned && attempts < maxAttempts) {
+                    // 完全にランダムな位置を生成
+                    const x = Math.random() * (maxX - minX) + minX;
+                    const y = Math.random() * (maxY - minY) + minY;
                     
-                    // サイズを個別に設定
-                    item.style.width = adjustedItemSize + 'px';
-                    item.style.height = adjustedItemSize + 'px';
-                    item.style.fontSize = Math.floor(adjustedItemSize * 0.4) + 'px';
-                    
-                    if (gameSettings.mode === 'alphabet') {
-                        if (i <= 26) {
-                            item.textContent = String.fromCharCode(64 + i);
-                        } else {
-                            item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
+                    // 他のアイテムとの重なりをチェック
+                    let overlap = false;
+                    for (let other of items) {
+                        const dx = x - other.x;
+                        const dy = y - other.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < itemSize + margin) {
+                            overlap = true;
+                            break;
                         }
-                    } else {
-                        item.textContent = i;
                     }
-                    item.dataset.value = i;
                     
-                    // ランダムな色
-                    const hue = Math.random() * 360;
-                    item.style.color = `hsl(${hue}, 70%, 40%)`;
-                    item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
-                    item.style.border = '2px solid';
+                    if (!overlap) {
+                        item.style.left = x + 'px';
+                        item.style.top = y + 'px';
+                        items.push({ x, y, element: item });
+                        positioned = true;
+                    }
                     
-                    // グリッド位置を計算
-                    const gridIndex = i - 1;
-                    const col = gridIndex % adjustedCols;
-                    const row = Math.floor(gridIndex / adjustedCols);
-                    
-                    // ランダムな小さなオフセットを追加
-                    const randomOffsetX = (Math.random() - 0.5) * margin;
-                    const randomOffsetY = (Math.random() - 0.5) * margin;
-                    
-                    const x = sideMargin + col * (adjustedItemSize + margin) + randomOffsetX;
-                    const y = topOffset + row * (adjustedItemSize + margin) + randomOffsetY;
-                    
-                    item.style.left = Math.max(sideMargin, Math.min(x, availableWidth)) + 'px';
-                    item.style.top = Math.max(topOffset, Math.min(y, screenHeight - bottomOffset - adjustedItemSize)) + 'px';
-                    
-                    // イベントリスナーを追加
-                    item.addEventListener('click', handleNumberClick);
-                    item.addEventListener('touchstart', function(e) {
-                        e.preventDefault();
-                        handleNumberClick(e);
-                    }, { passive: false });
-                    
-                    gameArea.appendChild(item);
+                    attempts++;
                 }
+                
+                // 配置に失敗した場合の処理
+                if (!positioned) {
+                    failedAttempts++;
+                    console.log(`配置失敗: ${i}番目のアイテム`);
+                    
+                    // 重なりを許容してでも配置
+                    if (failedAttempts > maxFailedAttempts) {
+                        // マージンを無視して強制配置
+                        const x = Math.random() * (maxX - minX) + minX;
+                        const y = Math.random() * (maxY - minY) + minY;
+                        item.style.left = x + 'px';
+                        item.style.top = y + 'px';
+                        items.push({ x, y, element: item });
+                        console.log(`強制配置: ${i}番目のアイテム`);
+                    } else {
+                        // より小さいマージンで再試行
+                        const reducedMargin = margin / 2;
+                        for (let retry = 0; retry < 20; retry++) {
+                            const x = Math.random() * (maxX - minX) + minX;
+                            const y = Math.random() * (maxY - minY) + minY;
+                            
+                            let overlap = false;
+                            for (let other of items) {
+                                const dx = x - other.x;
+                                const dy = y - other.y;
+                                const distance = Math.sqrt(dx * dx + dy * dy);
+                                if (distance < itemSize + reducedMargin) {
+                                    overlap = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (!overlap) {
+                                item.style.left = x + 'px';
+                                item.style.top = y + 'px';
+                                items.push({ x, y, element: item });
+                                positioned = true;
+                                break;
+                            }
+                        }
+                        
+                        // それでも配置できない場合は強制配置
+                        if (!positioned) {
+                            const x = Math.random() * (maxX - minX) + minX;
+                            const y = Math.random() * (maxY - minY) + minY;
+                            item.style.left = x + 'px';
+                            item.style.top = y + 'px';
+                            items.push({ x, y, element: item });
+                        }
+                    }
+                }
+                
+                // イベントリスナーを追加
+                item.addEventListener('click', handleNumberClick);
+                item.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    handleNumberClick(e);
+                }, { passive: false });
+                
+                gameArea.appendChild(item);
             }
+            
+            console.log(`配置完了: ${items.length}個のアイテム`);
         }
 
         function updateNextNumber() {
