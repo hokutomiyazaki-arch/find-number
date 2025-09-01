@@ -69,6 +69,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             position: relative;
             z-index: 100;
+            min-height: 60px;
         }
 
         .logo {
@@ -211,6 +212,16 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
+        /* フルスクリーン時のゲームエリア調整 */
+        body:fullscreen .game-area,
+        body:-webkit-full-screen .game-area,
+        body:-moz-full-screen .game-area,
+        body:-ms-fullscreen .game-area {
+            margin: 0;
+            border-radius: 0;
+            height: calc(100vh - 140px); /* ヘッダーとフッターを除く */
+        }
+
         .game-board {
             width: 100%;
             height: 100%;
@@ -222,19 +233,25 @@
             position: absolute;
             top: 10px;
             right: 10px;
-            padding: 10px 20px;
-            background: #e74c3c;
+            padding: 8px 20px;
+            background: rgba(231, 76, 60, 0.9);
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
-            z-index: 30;
+            z-index: 40;
             display: none;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
         .quit-button.show {
             display: block;
+        }
+
+        .quit-button:hover {
+            background: rgba(231, 76, 60, 1);
         }
 
         .number-item {
@@ -246,7 +263,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
@@ -305,6 +322,7 @@
             justify-content: space-around;
             align-items: center;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            min-height: 60px;
         }
 
         .status-item {
@@ -375,6 +393,7 @@
             align-items: center;
             z-index: 50;
             padding: 20px;
+            overflow-y: auto;
         }
 
         .result-title {
@@ -454,6 +473,7 @@
             align-items: center;
             z-index: 9999;
             transition: opacity 0.5s;
+            padding: 20px;
         }
 
         .splash-screen.hide {
@@ -468,10 +488,12 @@
         }
 
         .splash-title {
-            font-size: 2rem;
+            font-size: 1.5rem;
             color: #333;
             margin-bottom: 10px;
             font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
         }
 
         .splash-subtitle {
@@ -488,6 +510,7 @@
             font-size: 0.9rem;
             color: #666;
             margin-top: 20px;
+            text-align: center;
         }
 
         /* フッター */
@@ -497,6 +520,7 @@
             text-align: center;
             font-size: 0.8rem;
             color: #666;
+            min-height: 40px;
         }
 
         /* フルスクリーンボタン */
@@ -518,9 +542,9 @@
         /* レスポンシブ対応 */
         @media (max-width: 600px) {
             .number-item {
-                width: 45px;
-                height: 45px;
-                font-size: 1.1rem;
+                width: 42px;
+                height: 42px;
+                font-size: 1rem;
             }
             
             .title {
@@ -529,6 +553,14 @@
             
             .instructions {
                 font-size: 0.8rem;
+            }
+
+            .splash-title {
+                font-size: 1.2rem;
+            }
+
+            .splash-subtitle {
+                font-size: 2rem;
             }
         }
 
@@ -539,9 +571,17 @@
             }
             
             .number-item {
-                width: 60px;
-                height: 60px;
-                font-size: 1.5rem;
+                width: 55px;
+                height: 55px;
+                font-size: 1.3rem;
+            }
+        }
+
+        /* フルスクリーン時の調整 */
+        @media screen and (display-mode: fullscreen) {
+            .game-area {
+                margin: 0;
+                border-radius: 0;
             }
         }
     </style>
@@ -677,7 +717,8 @@
             startTime: null,
             timerInterval: null,
             soundEnabled: true,
-            positions: []
+            positions: [],
+            boardDimensions: null
         };
 
         // 音声管理
@@ -823,7 +864,27 @@
         }
 
         // アイテム配置の衝突検出
-        function checkOverlap(x, y, width, height, positions) {
+        function checkOverlap(x, y, width, height, positions, excludeQuitButton = true) {
+            // 終了ボタンとの重なりチェック
+            if (excludeQuitButton) {
+                const quitBtnRect = elements.quitButton.getBoundingClientRect();
+                const boardRect = elements.gameBoard.getBoundingClientRect();
+                const quitBtnRelative = {
+                    x: quitBtnRect.left - boardRect.left,
+                    y: quitBtnRect.top - boardRect.top,
+                    width: quitBtnRect.width + 20, // マージンを追加
+                    height: quitBtnRect.height + 20
+                };
+                
+                if (x < quitBtnRelative.x + quitBtnRelative.width &&
+                    x + width > quitBtnRelative.x &&
+                    y < quitBtnRelative.y + quitBtnRelative.height &&
+                    y + height > quitBtnRelative.y) {
+                    return true;
+                }
+            }
+            
+            // 他のアイテムとの重なりチェック
             for (const pos of positions) {
                 if (x < pos.x + pos.width &&
                     x + width > pos.x &&
@@ -838,6 +899,24 @@
         // 色を生成
         function getColorClass(index) {
             return `color-${index % 15}`;
+        }
+
+        // ゲームボードの実際のサイズを取得
+        function getBoardDimensions() {
+            const board = elements.gameBoard;
+            const rect = board.getBoundingClientRect();
+            const computedStyle = window.getComputedStyle(board);
+            const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+            const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
+            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
+            
+            return {
+                width: rect.width - paddingLeft - paddingRight,
+                height: rect.height - paddingTop - paddingBottom,
+                paddingLeft,
+                paddingTop
+            };
         }
 
         // ゲーム開始
@@ -855,11 +934,15 @@
             elements.resultScreen.style.display = 'none';
             elements.quitButton.classList.add('show');
             
+            // ゲームボードの実際のサイズを取得
+            gameState.boardDimensions = getBoardDimensions();
+            
             // アイテムを生成
             const board = elements.gameBoard;
-            const boardRect = board.getBoundingClientRect();
-            const itemSize = window.innerWidth < 600 ? 45 : 60;
-            const padding = 10;
+            const dimensions = gameState.boardDimensions;
+            const itemSize = window.innerWidth < 600 ? 42 : 55;
+            const padding = 15;
+            const quitButtonHeight = 50; // 終了ボタンエリアの高さ
             
             // 既存のアイテムをクリア
             const existingItems = board.querySelectorAll('.number-item');
@@ -886,39 +969,66 @@
                 }
             }
             
-            // ランダムに配置
-            let placedItems = [];
+            // 配置可能エリアを計算
+            const maxX = dimensions.width - itemSize - padding;
+            const maxY = dimensions.height - itemSize - quitButtonHeight - padding;
             
-            for (let i = 0; i < values.length; i++) {
-                let placed = false;
-                let attempts = 0;
-                const maxAttempts = 100;
+            // グリッド配置を試みる（40個の場合）
+            let placedItems = [];
+            let useGridLayout = gameState.itemCount >= 35;
+            
+            if (useGridLayout) {
+                // グリッド配置
+                const cols = Math.ceil(Math.sqrt(gameState.itemCount * (dimensions.width / dimensions.height)));
+                const rows = Math.ceil(gameState.itemCount / cols);
+                const cellWidth = dimensions.width / cols;
+                const cellHeight = (dimensions.height - quitButtonHeight) / rows;
                 
-                while (!placed && attempts < maxAttempts) {
-                    const x = Math.random() * (boardRect.width - itemSize - padding * 2) + padding;
-                    const y = Math.random() * (boardRect.height - itemSize - padding * 2 - 50) + padding; // 終了ボタンの分を考慮
+                for (let i = 0; i < values.length; i++) {
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
                     
-                    if (!checkOverlap(x, y, itemSize, itemSize, gameState.positions)) {
-                        const item = document.createElement('div');
-                        item.className = `number-item ${getColorClass(i)}`;
-                        item.textContent = values[i];
-                        item.style.left = x + 'px';
-                        item.style.top = y + 'px';
-                        item.style.width = itemSize + 'px';
-                        item.style.height = itemSize + 'px';
-                        item.dataset.value = values[i];
-                        item.dataset.index = i + 1;
+                    // 各セル内でランダムな位置に配置
+                    const cellX = col * cellWidth;
+                    const cellY = row * cellHeight + quitButtonHeight;
+                    
+                    const x = cellX + Math.random() * Math.max(0, cellWidth - itemSize - 5) + 2;
+                    const y = cellY + Math.random() * Math.max(0, cellHeight - itemSize - 5) + 2;
+                    
+                    const item = createNumberItem(values[i], i, x, y, itemSize);
+                    board.appendChild(item);
+                    placedItems.push(item);
+                    gameState.positions.push({ x, y, width: itemSize, height: itemSize });
+                }
+            } else {
+                // ランダム配置（20-30個の場合）
+                for (let i = 0; i < values.length; i++) {
+                    let placed = false;
+                    let attempts = 0;
+                    const maxAttempts = 200;
+                    
+                    while (!placed && attempts < maxAttempts) {
+                        const x = Math.random() * maxX + padding;
+                        const y = Math.random() * maxY + quitButtonHeight + padding;
                         
+                        if (!checkOverlap(x, y, itemSize, itemSize, gameState.positions, true)) {
+                            const item = createNumberItem(values[i], i, x, y, itemSize);
+                            board.appendChild(item);
+                            placedItems.push(item);
+                            gameState.positions.push({ x, y, width: itemSize, height: itemSize });
+                            placed = true;
+                        }
+                        attempts++;
+                    }
+                    
+                    if (!placed) {
+                        // 配置できなかった場合は強制配置
+                        const x = (i % 8) * (itemSize + 5) + padding;
+                        const y = Math.floor(i / 8) * (itemSize + 5) + quitButtonHeight + padding;
+                        const item = createNumberItem(values[i], i, x, y, itemSize);
                         board.appendChild(item);
                         placedItems.push(item);
-                        gameState.positions.push({ x, y, width: itemSize, height: itemSize });
-                        placed = true;
                     }
-                    attempts++;
-                }
-                
-                if (!placed) {
-                    console.log(`Failed to place item ${i + 1}`);
                 }
             }
             
@@ -935,6 +1045,20 @@
             startTimer();
         }
 
+        // 数字アイテムを作成
+        function createNumberItem(value, index, x, y, size) {
+            const item = document.createElement('div');
+            item.className = `number-item ${getColorClass(index)}`;
+            item.textContent = value;
+            item.style.left = x + 'px';
+            item.style.top = y + 'px';
+            item.style.width = size + 'px';
+            item.style.height = size + 'px';
+            item.dataset.value = value;
+            item.dataset.index = index + 1;
+            return item;
+        }
+
         // アイテムクリック処理
         function handleItemClick(e) {
             e.preventDefault();
@@ -944,8 +1068,6 @@
             
             const item = e.currentTarget;
             const index = parseInt(item.dataset.index);
-            
-            console.log('Clicked:', index, 'Current:', gameState.currentNumber);
             
             if (index === gameState.currentNumber) {
                 // 正解
