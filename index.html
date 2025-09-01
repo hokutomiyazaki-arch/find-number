@@ -756,7 +756,8 @@
                     <h2 class="result-title">完了！</h2>
                     <div class="result-time" id="resultTime">00:00</div>
                     <div class="best-score-input" id="bestScoreInput" style="display: none;">
-                        <p>ベストスコア更新！</p>
+                        <p style="color: #FFD700; font-size: 1.3rem; font-weight: bold;">🎉 ベストスコア更新！ 🎉</p>
+                        <p>1位の記録を更新しました！</p>
                         <input type="text" id="playerName" placeholder="名前を入力" maxlength="20">
                         <br>
                         <button class="save-score-btn" id="saveScore">保存</button>
@@ -1316,12 +1317,11 @@
             const key = `bestScores_${gameState.gameType}_${gameState.itemCount}`;
             const scores = JSON.parse(localStorage.getItem(key) || '[]');
             
-            // スコアが5位以内に入るか、まだ5件未満の場合のみ更新とみなす
-            const isNewBestScore = scores.length === 0 || 
-                                  (scores.length < 5 && !scores.some(s => s.time === time)) || 
-                                  (scores.length > 0 && time < scores[Math.min(scores.length - 1, 4)].time);
+            // 1位を更新した場合のみベストスコア更新とみなす
+            const isNewBestScore = scores.length === 0 || time < scores[0].time;
             
             if (isNewBestScore) {
+                // ベストスコア更新の場合のみ名前入力を表示
                 elements.bestScoreInput.style.display = 'block';
                 elements.playerName.value = '';
                 
@@ -1333,11 +1333,18 @@
                 };
                 
                 elements.skipSave.onclick = () => {
+                    // スキップした場合も記録は保存（名無しとして）
+                    saveScore('名無し', time);
                     elements.bestScoreInput.style.display = 'none';
                     displayScores();
                 };
             } else {
+                // 1位以外の記録の場合は名前入力なしで自動保存
                 elements.bestScoreInput.style.display = 'none';
+                
+                // 記録として保存（名前は自動的に「プレイヤー」とする）
+                const autoName = `プレイヤー${scores.length + 1}`;
+                saveScore(autoName, time);
                 displayScores();
             }
         }
@@ -1348,7 +1355,8 @@
             
             scores.push({ name, time, date: new Date().toLocaleDateString() });
             scores.sort((a, b) => a.time - b.time);
-            scores.splice(5); // トップ5のみ保持
+            // 保存件数の制限を撤廃（全記録を保持）
+            // scores.splice(5); // この行を削除
             
             localStorage.setItem(key, JSON.stringify(scores));
             
@@ -1361,7 +1369,10 @@
             const scores = JSON.parse(localStorage.getItem(key) || '[]');
             
             elements.scoresList.innerHTML = '';
-            scores.forEach((score, index) => {
+            // 最新の10件まで表示（または全件表示）
+            const displayCount = Math.min(scores.length, 10);
+            for (let i = 0; i < displayCount; i++) {
+                const score = scores[i];
                 const minutes = Math.floor(score.time / 60000);
                 const seconds = Math.floor((score.time % 60000) / 1000);
                 const milliseconds = Math.floor((score.time % 1000) / 10);
@@ -1369,12 +1380,27 @@
                 
                 const entry = document.createElement('div');
                 entry.className = 'score-entry';
+                // 1位の場合は特別な表示
+                if (i === 0) {
+                    entry.style.fontWeight = 'bold';
+                    entry.style.color = '#667eea';
+                }
                 entry.innerHTML = `
-                    <span>${index + 1}. ${score.name}</span>
+                    <span>${i + 1}. ${score.name}</span>
                     <span>${timeString}</span>
                 `;
                 elements.scoresList.appendChild(entry);
-            });
+            }
+            
+            // 10件以上ある場合は「他○件」と表示
+            if (scores.length > 10) {
+                const moreEntry = document.createElement('div');
+                moreEntry.className = 'score-entry';
+                moreEntry.style.textAlign = 'center';
+                moreEntry.style.color = '#999';
+                moreEntry.innerHTML = `<span>...他${scores.length - 10}件の記録</span>`;
+                elements.scoresList.appendChild(moreEntry);
+            }
         }
         
         // ランキング表示機能
