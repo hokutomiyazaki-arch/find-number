@@ -1,11 +1,11 @@
 {
-  "name": "FNT Speed Touch Game",
-  "short_name": "FNT Speed",
-  "description": "Functional Neuro Training - Speed Touch Game",
-  "start_url": "./index.html",
+  "name": "スピードタッチゲーム - Functional Neuro Training",
+  "short_name": "スピードタッチ",
+  "description": "数字やアルファベットを順番にタッチする認知トレーニングゲーム",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#764ba2",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
   "orientation": "portrait",
   "icons": [
     {
@@ -21,7 +21,27 @@
     },
     {
       "src": "FNT512.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
+      "sizes": "152x152",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
       "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
+      "sizes": "120x120",
       "type": "image/png"
     },
     {
@@ -36,7 +56,22 @@
     },
     {
       "src": "FNT512.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
       "sizes": "48x48",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "FNT512.png",
+      "sizes": "16x16",
       "type": "image/png"
     }
   ],
