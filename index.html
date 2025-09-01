@@ -244,6 +244,9 @@
             background: white;
             animation: appear 0.5s ease-out;
             touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 10;
+            opacity: 1;
         }
 
         @keyframes appear {
@@ -575,6 +578,14 @@
             </div>
         </div>
 
+        <div class="menu-section">
+            <h3>📱 表示方法</h3>
+            <div class="option-buttons">
+                <button class="option-btn display-btn selected" data-display="all">全て表示</button>
+                <button class="option-btn display-btn" data-display="sequential">順次表示</button>
+            </div>
+        </div>
+
         <button id="startBtn">ゲームスタート！</button>
     </div>
 
@@ -632,7 +643,8 @@
             count: 20,
             rounds: 10,
             size: 'medium',
-            mode: 'numbers'
+            mode: 'numbers',
+            display: 'all'  // 新しく追加
         };
         let currentNumber = 1;
         let startTime = 0;
@@ -645,6 +657,7 @@
         };
         let timerInterval;
         let menuVisible = true;
+        let allNumberElements = [];  // 全ての数字要素を保存
 
         // ローカルストレージから最高スコアを読み込み
         function loadBestScores() {
@@ -765,15 +778,27 @@
 
         // handleNumberClick関数
         function handleNumberClick(e) {
-            const value = parseInt(e.target.dataset.value);
+            // データ属性から値を取得（文字列として）
+            const valueStr = e.target.dataset.value;
+            const value = parseInt(valueStr);
             
-            console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
+            console.log(`クリックされた要素: value="${valueStr}", parsed=${value}, 現在の数字: ${currentNumber}`);
             
+            // 厳密な比較
             if (value === currentNumber) {
+                console.log('正解！');
                 playCorrectSound();
                 e.target.classList.add('correct');
+                
+                // 要素を非表示にする
                 setTimeout(() => {
                     e.target.style.display = 'none';
+                    e.target.style.pointerEvents = 'none';
+                    
+                    // 順次表示モードの場合、次の数字を表示
+                    if (gameSettings.display === 'sequential') {
+                        showNextNumbers();
+                    }
                 }, 300);
                 
                 currentNumber++;
@@ -788,6 +813,7 @@
                     }, 400);
                 }
             } else {
+                console.log(`不正解: clicked=${value}, expected=${currentNumber}`);
                 playWrongSound();
                 e.target.classList.add('wrong');
                 setTimeout(() => {
@@ -829,6 +855,14 @@
             });
         });
 
+        document.querySelectorAll('.display-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.display-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameSettings.display = this.dataset.display;
+            });
+        });
+
         // Start game
         document.getElementById('startBtn').addEventListener('click', startNewSession);
 
@@ -865,64 +899,159 @@
         function generateNumbers() {
             const gameArea = document.getElementById('gameArea');
             gameArea.innerHTML = '';
+            allNumberElements = [];
             
-            const items = [];
             const sizeClass = `size-${gameSettings.size}`;
             const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const margin = 10;
+            const margin = 15; // マージンを増やして重なりを防ぐ
+            const positions = [];
+            
+            // 画面サイズを取得
+            const screenWidth = window.innerWidth;
+            const screenHeight = window.innerHeight;
+            const usableWidth = screenWidth - itemSize - margin * 2;
+            const usableHeight = screenHeight - itemSize - margin * 2 - 120;
+            
+            // グリッドベースの配置を試みる
+            const cols = Math.floor(usableWidth / (itemSize + margin));
+            const rows = Math.floor(usableHeight / (itemSize + margin));
+            const gridPositions = [];
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    gridPositions.push({
+                        x: margin + col * (itemSize + margin),
+                        y: 80 + row * (itemSize + margin)
+                    });
+                }
+            }
+            
+            // グリッド位置をシャッフル
+            for (let i = gridPositions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [gridPositions[i], gridPositions[j]] = [gridPositions[j], gridPositions[i]];
+            }
             
             for (let i = 1; i <= gameSettings.count; i++) {
                 const item = document.createElement('div');
                 item.className = `number-item ${sizeClass}`;
                 
+                // テキスト設定
                 if (gameSettings.mode === 'alphabet') {
                     if (i <= 26) {
                         item.textContent = String.fromCharCode(64 + i);
                     } else {
                         item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
                     }
-                    item.dataset.value = i;
                 } else {
                     item.textContent = i;
-                    item.dataset.value = i;
                 }
                 
-                // Random color
-                const hue = Math.random() * 360;
+                // データ属性を明確に設定
+                item.dataset.value = String(i);
+                
+                // ランダムな色
+                const hue = (i * 137) % 360; // より均等な色分布
                 item.style.color = `hsl(${hue}, 70%, 40%)`;
                 item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
                 item.style.border = '3px solid';
                 
-                // Random position without overlap
-                let positioned = false;
-                let attempts = 0;
-                while (!positioned && attempts < 100) {
-                    const x = Math.random() * (window.innerWidth - itemSize - margin * 2) + margin;
-                    const y = Math.random() * (window.innerHeight - itemSize - margin * 2 - 120) + 80;
+                // 位置決定
+                let position;
+                if (i - 1 < gridPositions.length) {
+                    // グリッド位置を使用
+                    position = gridPositions[i - 1];
+                } else {
+                    // グリッドに収まらない場合はランダム配置
+                    let positioned = false;
+                    let attempts = 0;
                     
-                    let overlap = false;
-                    for (let other of items) {
-                        const dx = x - other.x;
-                        const dy = y - other.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < itemSize + margin) {
-                            overlap = true;
-                            break;
+                    while (!positioned && attempts < 100) {
+                        const x = Math.random() * usableWidth + margin;
+                        const y = Math.random() * usableHeight + 80;
+                        
+                        let overlap = false;
+                        for (let pos of positions) {
+                            const dx = x - pos.x;
+                            const dy = y - pos.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            if (distance < itemSize + margin) {
+                                overlap = true;
+                                break;
+                            }
                         }
+                        
+                        if (!overlap) {
+                            position = { x, y };
+                            positioned = true;
+                        }
+                        attempts++;
                     }
                     
-                    if (!overlap) {
-                        item.style.left = x + 'px';
-                        item.style.top = y + 'px';
-                        items.push({ x, y, element: item });
-                        positioned = true;
+                    // 配置できない場合の最終手段
+                    if (!position) {
+                        position = {
+                            x: margin + (i % cols) * (itemSize + margin),
+                            y: 80 + Math.floor(i / cols) * (itemSize + margin)
+                        };
                     }
-                    attempts++;
                 }
                 
+                item.style.left = position.x + 'px';
+                item.style.top = position.y + 'px';
+                positions.push(position);
+                
+                // 順次表示モードの場合の初期表示設定
+                if (gameSettings.display === 'sequential') {
+                    const displayOrder = Math.floor((i - 1) / 5); // 5個ずつ表示
+                    if (displayOrder > 0) {
+                        item.style.display = 'none';
+                        item.style.opacity = '0';
+                    }
+                    item.dataset.displayOrder = displayOrder;
+                }
+                
+                // クリックイベント（タッチイベントも含む）
                 item.addEventListener('click', handleNumberClick);
+                item.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    handleNumberClick(e);
+                });
+                
                 gameArea.appendChild(item);
+                allNumberElements.push(item);
             }
+            
+            // 順次表示モードの場合、最初のグループを表示
+            if (gameSettings.display === 'sequential') {
+                showNextNumbers();
+            }
+        }
+
+        // 順次表示用の関数
+        function showNextNumbers() {
+            const visibleCount = 5; // 一度に表示する数
+            const startIndex = currentNumber - 1;
+            const endIndex = Math.min(startIndex + visibleCount * 2, gameSettings.count);
+            
+            allNumberElements.forEach((element, index) => {
+                const elementValue = parseInt(element.dataset.value);
+                
+                if (elementValue >= currentNumber && elementValue < currentNumber + visibleCount * 2) {
+                    // 表示範囲内の数字を表示
+                    element.style.display = 'flex';
+                    setTimeout(() => {
+                        element.style.opacity = '1';
+                    }, 50);
+                } else if (elementValue < currentNumber) {
+                    // すでにクリックされた数字は非表示のまま
+                    element.style.display = 'none';
+                } else {
+                    // まだ表示しない数字
+                    element.style.display = 'none';
+                    element.style.opacity = '0';
+                }
+            });
         }
 
         function updateNextNumber() {
