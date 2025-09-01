@@ -48,7 +48,6 @@
             height: 100%;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
-            touch-action: manipulation; /* noneから変更 */
         }
 
         /* ヘッダー */
@@ -109,7 +108,27 @@
         }
 
         #menuToggleBtn {
-            display: none; /* 削除 */
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 1002;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #menuToggleBtn:hover {
+            transform: scale(1.1);
+            background: white;
         }
 
         #menu {
@@ -131,7 +150,7 @@
             overflow-x: hidden;
             transition: all 0.3s ease;
             -webkit-overflow-scrolling: touch;
-            pointer-events: auto !important;
+            touch-action: pan-y;
         }
 
         #menu.hidden {
@@ -169,9 +188,6 @@
             font-size: 14px;
             transition: all 0.3s;
             min-width: 80px;
-            pointer-events: auto !important; /* 追加 */
-            touch-action: manipulation; /* 追加 */
-            -webkit-tap-highlight-color: transparent;
         }
 
         .option-btn:hover {
@@ -197,9 +213,6 @@
             cursor: pointer;
             transition: all 0.3s;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-            pointer-events: auto !important; /* 追加 */
-            touch-action: manipulation; /* 追加 */
-            -webkit-tap-highlight-color: transparent;
         }
 
         #startBtn:hover {
@@ -216,7 +229,6 @@
             display: none;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
             touch-action: none;
-            z-index: 1;
         }
 
         .number-item {
@@ -277,48 +289,19 @@
             left: 50%;
             transform: translateX(-50%);
             background: rgba(255, 255, 255, 0.95);
-            padding: 10px 20px;
+            padding: 15px 30px;
             border-radius: 30px;
+            display: none;
             z-index: 100;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            display: none;
         }
 
         #timer, #nextNumber, #gameCounter {
             display: inline-block;
-            margin: 0 10px;
-            font-size: 16px;
+            margin: 0 15px;
+            font-size: 18px;
             font-weight: bold;
             color: #2a5298;
-        }
-
-        #quitGameBtn {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            padding: 12px 24px;
-            background: #f5576c;
-            color: white;
-            border: 2px solid #fff;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            z-index: 9999;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        #quitGameBtn:hover {
-            background: #e74c3c;
-            transform: scale(1.05);
-        }
-
-        #quitGameBtn:active {
-            transform: scale(0.95);
         }
 
         #results {
@@ -380,7 +363,7 @@
 
         #fullscreenBtn {
             position: fixed;
-            bottom: 20px;
+            bottom: 80px;
             right: 20px;
             width: 50px;
             height: 50px;
@@ -389,7 +372,7 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 24px;
-            z-index: 99999;
+            z-index: 1001;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             transition: all 0.3s;
         }
@@ -483,22 +466,6 @@
                 padding: 10px 30px;
             }
             
-            #gameInfo {
-                flex-wrap: wrap;
-                padding: 8px 15px;
-                gap: 5px;
-            }
-            
-            #timer, #nextNumber, #gameCounter {
-                font-size: 14px;
-                margin: 0 5px;
-            }
-            
-            #quitGameBtn {
-                padding: 6px 12px;
-                font-size: 13px;
-            }
-            
             .copyright {
                 font-size: 11px;
                 padding: 4px 10px;
@@ -558,6 +525,9 @@
         <h1>スピードタッチゲーム</h1>
     </div>
 
+    <!-- メニュー切り替えボタン -->
+    <button id="menuToggleBtn">☰</button>
+
     <div id="menu">
         <!-- 使い方説明 -->
         <div class="instructions">
@@ -615,11 +585,10 @@
         <span id="nextNumber">次: 1</span>
         <span id="gameCounter">ゲーム: 1/10</span>
     </div>
-    
-    <!-- 終了ボタンを独立した要素として配置 -->
-    <button id="quitGameBtn" style="display: none;">🚪 終了</button>
 
     <div id="bestScore">🏆 最高記録: --</div>
+
+    <div id="quitGameBtn">🚪 終了</div>
 
     <div id="results">
         <h2>🎉 ゲーム完了！</h2>
@@ -652,9 +621,6 @@
             splash.classList.add('show');
             await new Promise(resolve => setTimeout(resolve, 2000));
             splash.classList.remove('show');
-            
-            // スプラッシュスクリーン後にボタンの初期化
-            initializeButtons();
         });
 
         // Audio context for sounds
@@ -679,119 +645,6 @@
         };
         let timerInterval;
         let menuVisible = true;
-        let waitingNumbers = []; // 表示待ちの数字
-        let displayedItems = []; // 現在表示中のアイテム
-
-        // ボタンの初期化を別関数に
-        function initializeButtons() {
-            console.log('ボタンを初期化しています...');
-            
-            // count buttons
-            const countBtns = document.querySelectorAll('.count-btn');
-            console.log('Count buttons found:', countBtns.length);
-            countBtns.forEach(btn => {
-                btn.onclick = function() {
-                    console.log('count-btn clicked:', this.dataset.count);
-                    document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    gameSettings.count = parseInt(this.dataset.count);
-                };
-            });
-            
-            // rounds buttons
-            const roundsBtns = document.querySelectorAll('.rounds-btn');
-            console.log('Rounds buttons found:', roundsBtns.length);
-            roundsBtns.forEach(btn => {
-                btn.onclick = function() {
-                    console.log('rounds-btn clicked:', this.dataset.rounds);
-                    document.querySelectorAll('.rounds-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    gameSettings.rounds = parseInt(this.dataset.rounds);
-                };
-            });
-
-            // size buttons
-            const sizeBtns = document.querySelectorAll('.size-btn');
-            console.log('Size buttons found:', sizeBtns.length);
-            sizeBtns.forEach(btn => {
-                btn.onclick = function() {
-                    console.log('size-btn clicked:', this.dataset.size);
-                    document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    gameSettings.size = this.dataset.size;
-                };
-            });
-
-            // mode buttons
-            const modeBtns = document.querySelectorAll('.mode-btn');
-            console.log('Mode buttons found:', modeBtns.length);
-            modeBtns.forEach(btn => {
-                btn.onclick = function() {
-                    console.log('mode-btn clicked:', this.dataset.mode);
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
-                    this.classList.add('selected');
-                    gameSettings.mode = this.dataset.mode;
-                };
-            });
-
-            // start button
-            const startBtn = document.getElementById('startBtn');
-            if (startBtn) {
-                console.log('Start button found');
-                startBtn.onclick = function() {
-                    console.log('Start button clicked');
-                    startNewSession();
-                };
-            }
-
-            // 終了ボタン
-            const quitBtn = document.getElementById('quitGameBtn');
-            if (quitBtn) {
-                console.log('Quit button found');
-                quitBtn.onclick = function() {
-                    console.log('Quit button clicked');
-                    handleQuitGame();
-                };
-            }
-
-            // その他のボタン
-            const nextGameBtn = document.getElementById('nextGame');
-            if (nextGameBtn) {
-                nextGameBtn.onclick = function() {
-                    currentRound++;
-                    document.getElementById('gameCounter').textContent = `ゲーム: ${currentRound}/${gameSettings.rounds}`;
-                    startGame();
-                };
-            }
-
-            const restartGameBtn = document.getElementById('restartGame');
-            if (restartGameBtn) {
-                restartGameBtn.onclick = startNewSession;
-            }
-
-            const backToMenuBtn = document.getElementById('backToMenu');
-            if (backToMenuBtn) {
-                backToMenuBtn.onclick = function() {
-                    document.getElementById('results').style.display = 'none';
-                    document.getElementById('menu').style.display = 'block';
-                    document.querySelector('.header').style.display = 'flex';
-                    document.getElementById('bestScore').style.display = 'none';
-                };
-            }
-
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
-            if (fullscreenBtn) {
-                fullscreenBtn.onclick = function() {
-                    if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(err => {
-                            console.log('Fullscreen error:', err);
-                        });
-                    } else {
-                        document.exitFullscreen();
-                    }
-                };
-            }
-        }
 
         // ローカルストレージから最高スコアを読み込み
         function loadBestScores() {
@@ -912,18 +765,78 @@
 
         // handleNumberClick関数
         function handleNumberClick(e) {
-            // 古い関数は新しい関数にリダイレクト
-            handleNumberClickWithQueue(e);
+            const value = parseInt(e.target.dataset.value);
+            
+            console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
+            
+            if (value === currentNumber) {
+                playCorrectSound();
+                e.target.classList.add('correct');
+                setTimeout(() => {
+                    e.target.style.display = 'none';
+                }, 300);
+                
+                currentNumber++;
+                updateNextNumber();
+                
+                console.log(`次の数字: ${currentNumber}, 最大数: ${gameSettings.count}`);
+                
+                if (currentNumber > gameSettings.count) {
+                    console.log('全ての数字をクリアしました！');
+                    setTimeout(() => {
+                        completeRound();
+                    }, 400);
+                }
+            } else {
+                playWrongSound();
+                e.target.classList.add('wrong');
+                setTimeout(() => {
+                    e.target.classList.remove('wrong');
+                }, 300);
+            }
         }
 
-        // Menu handlers - シンプルなクリックイベントのみに変更（削除）
+        // Menu handlers
+        document.querySelectorAll('.count-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.count-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameSettings.count = parseInt(this.dataset.count);
+            });
+        });
+        
+        document.querySelectorAll('.rounds-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.rounds-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameSettings.rounds = parseInt(this.dataset.rounds);
+            });
+        });
 
-        // Start game（削除）
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameSettings.size = this.dataset.size;
+            });
+        });
+
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameSettings.mode = this.dataset.mode;
+            });
+        });
+
+        // Start game
+        document.getElementById('startBtn').addEventListener('click', startNewSession);
 
         function startNewSession() {
             currentRound = 1;
             roundTimes = [];
             document.getElementById('menu').style.display = 'none';
+            document.getElementById('menuToggleBtn').style.display = 'none';
             document.querySelector('.header').style.display = 'none';
             document.getElementById('gameCounter').textContent = `ゲーム: ${currentRound}/${gameSettings.rounds}`;
             startGame();
@@ -931,20 +844,10 @@
 
         function startGame() {
             currentNumber = 1;
-            
-            // ゲーム画面の表示
             document.getElementById('gameArea').style.display = 'block';
             document.getElementById('gameInfo').style.display = 'block';
             document.getElementById('results').style.display = 'none';
-            
-            // 終了ボタンを表示
-            const quitBtn = document.getElementById('quitGameBtn');
-            if (quitBtn) {
-                quitBtn.style.display = 'block';
-                console.log('終了ボタンを表示しました');
-            } else {
-                console.error('終了ボタンが見つかりません');
-            }
+            document.getElementById('quitGameBtn').style.display = 'block';
             
             // 現在の設定での最高スコアを表示
             const currentBest = bestScores[gameSettings.count][gameSettings.mode];
@@ -963,369 +866,63 @@
             const gameArea = document.getElementById('gameArea');
             gameArea.innerHTML = '';
             
-            // 初期化
-            waitingNumbers = [];
-            displayedItems = [];
-            
+            const items = [];
             const sizeClass = `size-${gameSettings.size}`;
             const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
+            const margin = 10;
             
-            // 画面サイズを取得
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            
-            // 配置可能エリア
-            const topOffset = 80;
-            const bottomOffset = 100;
-            const sideMargin = 10;
-            
-            // グリッド配置で確実に重ならないようにする
-            const gridSpacing = itemSize + 25; // 十分な間隔
-            const cols = Math.floor((screenWidth - sideMargin * 2) / gridSpacing);
-            const rows = Math.floor((screenHeight - topOffset - bottomOffset) / gridSpacing);
-            const maxGridSlots = cols * rows;
-            
-            console.log(`グリッド: ${cols}列 x ${rows}行 = 最大${maxGridSlots}個配置可能`);
-            
-            // グリッド位置を作成してシャッフル
-            const gridPositions = [];
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    gridPositions.push({
-                        x: sideMargin + col * gridSpacing + (Math.random() - 0.5) * 10,
-                        y: topOffset + row * gridSpacing + (Math.random() - 0.5) * 10
-                    });
-                }
-            }
-            
-            // ランダムに並び替え
-            for (let i = gridPositions.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [gridPositions[i], gridPositions[j]] = [gridPositions[j], gridPositions[i]];
-            }
-            
-            // 数字を配置
             for (let i = 1; i <= gameSettings.count; i++) {
                 const item = document.createElement('div');
                 item.className = `number-item ${sizeClass}`;
-                item.dataset.numberValue = i;
                 
-                // テキスト設定
                 if (gameSettings.mode === 'alphabet') {
                     if (i <= 26) {
                         item.textContent = String.fromCharCode(64 + i);
                     } else {
                         item.textContent = 'A' + String.fromCharCode(64 + (i - 26));
                     }
+                    item.dataset.value = i;
                 } else {
                     item.textContent = i;
+                    item.dataset.value = i;
                 }
-                item.dataset.value = i;
                 
-                // ランダムな色
+                // Random color
                 const hue = Math.random() * 360;
                 item.style.color = `hsl(${hue}, 70%, 40%)`;
                 item.style.borderColor = `hsl(${hue}, 70%, 50%)`;
                 item.style.border = '3px solid';
                 
-                // イベントリスナー（一度だけ追加）
-                const clickHandler = function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleNumberClickSimple(e);
-                };
-                
-                item.addEventListener('click', clickHandler, { once: false });
-                
-                // グリッド位置に配置
-                if (i - 1 < gridPositions.length) {
-                    const pos = gridPositions[i - 1];
-                    item.style.left = pos.x + 'px';
-                    item.style.top = pos.y + 'px';
-                    item.style.display = 'flex';
+                // Random position without overlap
+                let positioned = false;
+                let attempts = 0;
+                while (!positioned && attempts < 100) {
+                    const x = Math.random() * (window.innerWidth - itemSize - margin * 2) + margin;
+                    const y = Math.random() * (window.innerHeight - itemSize - margin * 2 - 120) + 80;
                     
-                    gameArea.appendChild(item);
-                    displayedItems.push({ x: pos.x, y: pos.y, element: item, value: i });
-                } else {
-                    // 画面に入らない場合は待機
-                    item.style.display = 'none';
-                    item.style.opacity = '0';
-                    
-                    gameArea.appendChild(item);
-                    waitingNumbers.push({ element: item, value: i });
-                    console.log(`${i}番は待機中`);
-                }
-            }
-            
-            console.log(`表示: ${displayedItems.length}個、待機: ${waitingNumbers.length}個`);
-        }
-        
-        // シンプルなクリックハンドラー
-        function handleNumberClickSimple(e) {
-            const target = e.currentTarget || e.target;
-            const value = parseInt(target.dataset.value);
-            
-            if (!value || isNaN(value)) return;
-            
-            console.log(`クリック: ${value}番、正解: ${currentNumber}番`);
-            
-            if (value === currentNumber) {
-                playCorrectSound();
-                target.classList.add('correct');
-                
-                // 削除処理
-                const index = displayedItems.findIndex(item => item.value === value);
-                if (index !== -1) {
-                    const removed = displayedItems[index];
-                    displayedItems.splice(index, 1);
-                    
-                    setTimeout(() => {
-                        target.style.display = 'none';
-                        target.remove();
-                        
-                        // 待機中の数字を表示（2秒後）
-                        if (waitingNumbers.length > 0) {
-                            setTimeout(() => {
-                                showNextWaitingNumber(removed.x, removed.y);
-                            }, 2000);
+                    let overlap = false;
+                    for (let other of items) {
+                        const dx = x - other.x;
+                        const dy = y - other.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < itemSize + margin) {
+                            overlap = true;
+                            break;
                         }
-                    }, 300);
-                }
-                
-                currentNumber++;
-                updateNextNumber();
-                
-                if (currentNumber > gameSettings.count) {
-                    setTimeout(() => {
-                        completeRound();
-                    }, 500);
-                }
-            } else {
-                playWrongSound();
-                target.classList.add('wrong');
-                setTimeout(() => {
-                    target.classList.remove('wrong');
-                }, 300);
-            }
-        }
-        
-        // 待機中の数字を表示
-        function showNextWaitingNumber(oldX, oldY) {
-            if (waitingNumbers.length === 0) return;
-            
-            const waiting = waitingNumbers.shift();
-            const item = waiting.element;
-            
-            // 離れた位置を探す
-            const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            
-            let newX = oldX;
-            let newY = oldY;
-            
-            // 既存の数字から離れた位置を探す
-            const minDistance = itemSize + 30;
-            let attempts = 0;
-            let found = false;
-            
-            while (attempts < 50 && !found) {
-                newX = Math.random() * (screenWidth - itemSize - 20) + 10;
-                newY = Math.random() * (screenHeight - itemSize - 180) + 80;
-                
-                let farEnough = true;
-                for (let displayed of displayedItems) {
-                    const dist = Math.sqrt(
-                        Math.pow(newX - displayed.x, 2) + 
-                        Math.pow(newY - displayed.y, 2)
-                    );
-                    if (dist < minDistance) {
-                        farEnough = false;
-                        break;
                     }
-                }
-                
-                if (farEnough) {
-                    found = true;
-                }
-                attempts++;
-            }
-            
-            // 位置を設定
-            item.style.left = newX + 'px';
-            item.style.top = newY + 'px';
-            item.style.opacity = '0';
-            item.style.display = 'flex';
-            
-            // フェードイン
-            setTimeout(() => {
-                item.style.transition = 'opacity 0.5s';
-                item.style.opacity = '1';
-            }, 100);
-            
-            displayedItems.push({ x: newX, y: newY, element: item, value: waiting.value });
-            console.log(`${waiting.value}番を表示しました`);
-        }
-        
-        // 新しいクリックハンドラー（待機中の数字を表示する機能付き）
-        function handleNumberClickWithQueue(e) {
-            // 連続クリック防止
-            if (e.target.dataset.processing === 'true') {
-                return;
-            }
-            e.target.dataset.processing = 'true';
-            
-            const value = parseInt(e.target.dataset.value);
-            
-            console.log(`クリックされた数字: ${value}, 現在の数字: ${currentNumber}`);
-            
-            if (value === currentNumber) {
-                playCorrectSound();
-                e.target.classList.add('correct');
-                
-                // 表示中リストから削除
-                const index = displayedItems.findIndex(item => item.value === value);
-                if (index !== -1) {
-                    const removedItem = displayedItems.splice(index, 1)[0];
                     
-                    // アニメーション後に要素を削除
-                    setTimeout(() => {
-                        e.target.style.display = 'none';
-                        e.target.dataset.processing = 'false';
-                        
-                        // 待機中の数字があれば、より長い遅延で表示
-                        if (waitingNumbers.length > 0) {
-                            // 1秒遅延させてタッチイベントが完全に終了してから表示
-                            setTimeout(() => {
-                                tryToDisplayWaitingNumber(removedItem.x, removedItem.y);
-                            }, 1000);
-                        }
-                    }, 300);
-                }
-                
-                currentNumber++;
-                updateNextNumber();
-                
-                console.log(`次の数字: ${currentNumber}, 最大数: ${gameSettings.count}`);
-                
-                if (currentNumber > gameSettings.count) {
-                    console.log('全ての数字をクリアしました！');
-                    setTimeout(() => {
-                        completeRound();
-                    }, 400);
-                }
-            } else {
-                playWrongSound();
-                e.target.classList.add('wrong');
-                setTimeout(() => {
-                    e.target.classList.remove('wrong');
-                    e.target.dataset.processing = 'false';
-                }, 300);
-            }
-        }
-        
-        // 待機中の数字を表示する関数
-        function tryToDisplayWaitingNumber(freedX, freedY) {
-            if (waitingNumbers.length === 0) return;
-            
-            const itemSize = gameSettings.size === 'small' ? 50 : gameSettings.size === 'medium' ? 70 : 90;
-            const margin = 15;
-            
-            // 画面サイズを取得
-            const screenWidth = Math.min(window.innerWidth, document.documentElement.clientWidth);
-            const screenHeight = Math.min(window.innerHeight, document.documentElement.clientHeight);
-            
-            const maxX = screenWidth - itemSize - 10;
-            const minX = 10;
-            const maxY = screenHeight - itemSize - 100;
-            const minY = 80;
-            
-            // 最初の待機中アイテムを取得
-            const waitingItem = waitingNumbers[0];
-            const value = parseInt(waitingItem.dataset.value);
-            
-            // タッチした場所から離れた位置を優先的に選択
-            const positions = [];
-            
-            // タッチ位置から離れた四隅を優先
-            positions.push(
-                { x: minX, y: minY }, // 左上
-                { x: maxX, y: minY }, // 右上
-                { x: minX, y: maxY }, // 左下
-                { x: maxX, y: maxY }  // 右下
-            );
-            
-            // タッチ位置から離れた場所を追加
-            const safeDistance = itemSize * 2 + margin;
-            positions.push(
-                { x: freedX + safeDistance, y: freedY },
-                { x: freedX - safeDistance, y: freedY },
-                { x: freedX, y: freedY + safeDistance },
-                { x: freedX, y: freedY - safeDistance },
-                { x: freedX + safeDistance, y: freedY + safeDistance },
-                { x: freedX - safeDistance, y: freedY - safeDistance },
-                { x: freedX + safeDistance, y: freedY - safeDistance },
-                { x: freedX - safeDistance, y: freedY + safeDistance }
-            );
-            
-            // ランダムな位置も追加（ただしタッチ位置から離れた場所）
-            for (let i = 0; i < 30; i++) {
-                let x, y;
-                do {
-                    x = Math.random() * (maxX - minX) + minX;
-                    y = Math.random() * (maxY - minY) + minY;
-                } while (Math.sqrt((x - freedX) ** 2 + (y - freedY) ** 2) < safeDistance);
-                
-                positions.push({ x, y });
-            }
-            
-            // 配置を試みる
-            for (let pos of positions) {
-                // 画面内かチェック
-                if (pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY) {
-                    continue;
-                }
-                
-                // 他のアイテムとの重なりをチェック
-                let overlap = false;
-                for (let other of displayedItems) {
-                    const dx = pos.x - other.x;
-                    const dy = pos.y - other.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < itemSize + margin) {
-                        overlap = true;
-                        break;
+                    if (!overlap) {
+                        item.style.left = x + 'px';
+                        item.style.top = y + 'px';
+                        items.push({ x, y, element: item });
+                        positioned = true;
                     }
+                    attempts++;
                 }
                 
-                if (!overlap) {
-                    // 配置成功
-                    waitingItem.style.left = pos.x + 'px';
-                    waitingItem.style.top = pos.y + 'px';
-                    
-                    // 少し遅延してから表示（フェードイン効果）
-                    waitingItem.style.opacity = '0';
-                    waitingItem.style.display = 'flex';
-                    
-                    setTimeout(() => {
-                        waitingItem.style.transition = 'opacity 0.3s ease-in';
-                        waitingItem.style.opacity = '1';
-                    }, 100);
-                    
-                    // リストを更新
-                    waitingNumbers.shift();
-                    displayedItems.push({ x: pos.x, y: pos.y, element: waitingItem, value: value });
-                    
-                    console.log(`${value}番を新たに表示しました（タッチ位置から離れた場所）。残り待機: ${waitingNumbers.length}個`);
-                    
-                    // アニメーション効果
-                    waitingItem.style.animation = 'appear 0.5s ease-out';
-                    
-                    return;
-                }
+                item.addEventListener('click', handleNumberClick);
+                gameArea.appendChild(item);
             }
-            
-            console.log(`${value}番の表示位置が見つかりませんでした。`);
         }
 
         function updateNextNumber() {
@@ -1363,69 +960,47 @@
         document.getElementById('backToMenu').addEventListener('click', () => {
             document.getElementById('results').style.display = 'none';
             document.getElementById('menu').style.display = 'block';
+            document.getElementById('menuToggleBtn').style.display = 'block';
             document.querySelector('.header').style.display = 'flex';
             document.getElementById('bestScore').style.display = 'none';
         });
 
-        // 終了ボタンの処理を簡略化（そのまま維持）
-        function quitGameImmediately() {
-            console.log('ゲーム即座終了処理');
-            
-            // タイマーをクリア
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            
-            // すべての要素を非表示
-            document.getElementById('gameArea').style.display = 'none';
-            document.getElementById('gameInfo').style.display = 'none';
-            document.getElementById('results').style.display = 'none';
-            document.getElementById('quitGameBtn').style.display = 'none';
-            document.getElementById('bestScore').style.display = 'none';
-            
-            // メニューを表示
-            document.getElementById('menu').style.display = 'block';
-            document.getElementById('menu').classList.remove('hidden');
-            document.querySelector('.header').style.display = 'flex';
-            
-            // ゲーム状態をリセット
-            currentNumber = 1;
-            startTime = 0;
-            currentRound = 1;
-            roundTimes = [];
-            menuVisible = true;
-            
-            console.log('メニューに戻りました（即座）');
+        // 終了ボタン
+        const quitBtn = document.getElementById('quitGameBtn');
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        if (isTouchDevice) {
+            quitBtn.addEventListener('touchstart', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                handleQuitGame();
+            }, { passive: false });
         }
         
-        // 終了ボタンの処理
-        function handleQuitGame(event) {
-            if (event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
+        quitBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            handleQuitGame();
+        });
+        
+        function handleQuitGame() {
+            const shouldQuit = confirm('ゲームを終了してメニューに戻りますか？\n現在の進行状況は保存されません。');
             
-            console.log('終了ボタンがクリックされました');
-            
-            // デバッグ: confirmをスキップして直接終了
-            // 本番環境では以下のコメントを外してください
-            /*
-            const shouldQuit = window.confirm('ゲームを終了してメニューに戻りますか？\n現在の進行状況は保存されません。');
             if (shouldQuit) {
-                quitGameImmediately();
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                document.getElementById('gameArea').style.display = 'none';
+                document.getElementById('gameInfo').style.display = 'none';
+                document.getElementById('results').style.display = 'none';
+                document.getElementById('quitGameBtn').style.display = 'none';
+                document.getElementById('bestScore').style.display = 'none';
+                document.getElementById('menu').style.display = 'block';
+                document.getElementById('menuToggleBtn').style.display = 'block';
+                document.querySelector('.header').style.display = 'flex';
+                currentNumber = 1;
+                startTime = 0;
             }
-            */
-            
-            // デバッグ用: 直接終了
-            quitGameImmediately();
-            
-            return false;
         }
-        
-        // グローバルスコープに関数を登録
-        window.handleQuitGame = handleQuitGame;
-        window.quitGameImmediately = quitGameImmediately;
 
         // Fullscreen
         document.getElementById('fullscreenBtn').addEventListener('click', () => {
@@ -1438,8 +1013,16 @@
             }
         });
 
-        // Prevent scrolling - 完全に削除してタッチイベントを正常化
-        // touchmoveイベントの制御を削除して、すべてのタッチ操作を有効に
+        // Prevent scrolling - メニューと終了ボタンは除外
+        document.addEventListener('touchmove', (e) => {
+            // メニュー内、終了ボタン、メニュー切り替えボタンでのスクロールは許可
+            if (e.target.closest('#menu') || 
+                e.target.closest('#quitGameBtn') || 
+                e.target.closest('#menuToggleBtn')) {
+                return;
+            }
+            e.preventDefault();
+        }, { passive: false });
 
         // Prevent horizontal scroll
         window.addEventListener('scroll', () => {
