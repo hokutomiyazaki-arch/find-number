@@ -190,15 +190,28 @@
             transform: scale(0.95);
         }
 
-        /* 使い方説明 */
+        /* トレーニング説明 */
         .instructions {
             background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
+            padding: 12px;
             margin: 5px 10px;
             border-radius: 10px;
-            font-size: 0.9rem;
-            line-height: 1.5;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .instructions h3 {
+            font-size: 1rem;
+            color: #667eea;
+            margin-bottom: 8px;
             text-align: center;
+            font-weight: bold;
+        }
+
+        .instructions .highlight {
+            color: #764ba2;
+            font-weight: 600;
         }
 
         /* ゲームエリア */
@@ -552,7 +565,12 @@
             }
             
             .instructions {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
+                padding: 10px;
+            }
+
+            .instructions h3 {
+                font-size: 0.9rem;
             }
 
             .splash-title {
@@ -648,10 +666,13 @@
             </div>
         </div>
 
-        <!-- 使い方説明 -->
+        <!-- トレーニング説明 -->
         <div class="instructions">
-            【遊び方】画面に表示される数字/アルファベットを順番にタップ！<br>
-            タイムを競おう！メニューから設定を変更できます。
+            <h3>【トレーニング方法】</h3>
+            画面に表示される数字/アルファベットを順番にタップしてください。<br>
+            <span class="highlight">正確なタッチ</span>は小脳の外側部、
+            <span class="highlight">数字の位置探索</span>は視覚の背側経路（頭頂葉）、
+            <span class="highlight">文字認識</span>は腹側経路（側頭葉）を活性化します。
         </div>
 
         <!-- ゲームエリア -->
@@ -718,7 +739,8 @@
             timerInterval: null,
             soundEnabled: true,
             positions: [],
-            boardDimensions: null
+            boardDimensions: null,
+            audioBuffers: {}
         };
 
         // 音声管理
@@ -727,7 +749,43 @@
         function initAudio() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                // 事前に音声バッファを生成
+                preloadSounds();
             }
+        }
+
+        // 音声を事前に準備
+        function preloadSounds() {
+            // 正解音のバッファを作成
+            const correctBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
+            const correctData = correctBuffer.getChannelData(0);
+            for (let i = 0; i < correctData.length; i++) {
+                correctData[i] = Math.sin(2 * Math.PI * 523 * i / audioContext.sampleRate) * 0.3;
+            }
+            gameState.audioBuffers.correct = correctBuffer;
+
+            // エラー音のバッファを作成
+            const errorBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.3, audioContext.sampleRate);
+            const errorData = errorBuffer.getChannelData(0);
+            for (let i = 0; i < errorData.length; i++) {
+                errorData[i] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-i / errorData.length * 3);
+            }
+            gameState.audioBuffers.error = errorBuffer;
+        }
+
+        // 高速音声再生
+        function playBufferedSound(bufferName) {
+            if (!gameState.soundEnabled || !audioContext || !gameState.audioBuffers[bufferName]) return;
+            
+            const source = audioContext.createBufferSource();
+            const gainNode = audioContext.createGain();
+            
+            source.buffer = gameState.audioBuffers[bufferName];
+            gainNode.gain.value = 0.5;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            source.start(0);
         }
         
         function playSound(frequency, duration, type = 'sine') {
@@ -755,12 +813,14 @@
         }
 
         function playCorrectSound() {
-            playSound(523, 0.1); // C5
-            setTimeout(() => playSound(659, 0.1), 100); // E5
+            // 即座に再生
+            playBufferedSound('correct');
+            // 追加の高音
+            setTimeout(() => playSound(659, 0.1), 100);
         }
 
         function playErrorSound() {
-            playSound(200, 0.3, 'sawtooth');
+            playBufferedSound('error');
         }
 
         function playCompleteSound() {
@@ -919,6 +979,16 @@
             };
         }
 
+        // Fisher-Yates シャッフル
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
         // ゲーム開始
         function startGame() {
             // Audio context を初期化
@@ -969,43 +1039,61 @@
                 }
             }
             
-            // 配置可能エリアを計算
-            const maxX = dimensions.width - itemSize - padding;
-            const maxY = dimensions.height - itemSize - quitButtonHeight - padding;
+            // 配置位置をランダムに生成
+            const placedItems = [];
             
-            // グリッド配置を試みる（40個の場合）
-            let placedItems = [];
-            let useGridLayout = gameState.itemCount >= 35;
+            // まず、グリッド位置を生成してシャッフル
+            const gridPositions = [];
+            const cols = Math.ceil(Math.sqrt(gameState.itemCount * (dimensions.width / dimensions.height)));
+            const rows = Math.ceil(gameState.itemCount / cols);
+            const cellWidth = dimensions.width / cols;
+            const cellHeight = (dimensions.height - quitButtonHeight) / rows;
             
-            if (useGridLayout) {
-                // グリッド配置
-                const cols = Math.ceil(Math.sqrt(gameState.itemCount * (dimensions.width / dimensions.height)));
-                const rows = Math.ceil(gameState.itemCount / cols);
-                const cellWidth = dimensions.width / cols;
-                const cellHeight = (dimensions.height - quitButtonHeight) / rows;
+            // グリッド位置を生成
+            for (let i = 0; i < gameState.itemCount; i++) {
+                const row = Math.floor(i / cols);
+                const col = i % cols;
                 
-                for (let i = 0; i < values.length; i++) {
-                    const row = Math.floor(i / cols);
-                    const col = i % cols;
+                const cellX = col * cellWidth;
+                const cellY = row * cellHeight + quitButtonHeight;
+                
+                // セル内でランダムな位置
+                const randomOffsetX = Math.random() * Math.max(0, cellWidth - itemSize - 10);
+                const randomOffsetY = Math.random() * Math.max(0, cellHeight - itemSize - 10);
+                
+                gridPositions.push({
+                    x: cellX + randomOffsetX + 5,
+                    y: cellY + randomOffsetY + 5
+                });
+            }
+            
+            // 位置をシャッフル
+            const shuffledPositions = shuffleArray(gridPositions);
+            
+            // 各値を配置
+            for (let i = 0; i < values.length; i++) {
+                let placed = false;
+                
+                // まずシャッフルされた位置を試す
+                if (i < shuffledPositions.length) {
+                    const pos = shuffledPositions[i];
                     
-                    // 各セル内でランダムな位置に配置
-                    const cellX = col * cellWidth;
-                    const cellY = row * cellHeight + quitButtonHeight;
-                    
-                    const x = cellX + Math.random() * Math.max(0, cellWidth - itemSize - 5) + 2;
-                    const y = cellY + Math.random() * Math.max(0, cellHeight - itemSize - 5) + 2;
-                    
-                    const item = createNumberItem(values[i], i, x, y, itemSize);
-                    board.appendChild(item);
-                    placedItems.push(item);
-                    gameState.positions.push({ x, y, width: itemSize, height: itemSize });
+                    // 他のアイテムや終了ボタンと重ならないかチェック
+                    if (!checkOverlap(pos.x, pos.y, itemSize, itemSize, gameState.positions, true)) {
+                        const item = createNumberItem(values[i], i, pos.x, pos.y, itemSize);
+                        board.appendChild(item);
+                        placedItems.push(item);
+                        gameState.positions.push({ x: pos.x, y: pos.y, width: itemSize, height: itemSize });
+                        placed = true;
+                    }
                 }
-            } else {
-                // ランダム配置（20-30個の場合）
-                for (let i = 0; i < values.length; i++) {
-                    let placed = false;
+                
+                // シャッフル位置が使えない場合は完全ランダム
+                if (!placed) {
                     let attempts = 0;
-                    const maxAttempts = 200;
+                    const maxAttempts = 100;
+                    const maxX = dimensions.width - itemSize - padding;
+                    const maxY = dimensions.height - itemSize - quitButtonHeight - padding;
                     
                     while (!placed && attempts < maxAttempts) {
                         const x = Math.random() * maxX + padding;
@@ -1020,15 +1108,15 @@
                         }
                         attempts++;
                     }
-                    
-                    if (!placed) {
-                        // 配置できなかった場合は強制配置
-                        const x = (i % 8) * (itemSize + 5) + padding;
-                        const y = Math.floor(i / 8) * (itemSize + 5) + quitButtonHeight + padding;
-                        const item = createNumberItem(values[i], i, x, y, itemSize);
-                        board.appendChild(item);
-                        placedItems.push(item);
-                    }
+                }
+                
+                // それでも配置できない場合は強制配置
+                if (!placed) {
+                    const forcedX = (i % 8) * (itemSize + 5) + padding;
+                    const forcedY = Math.floor(i / 8) * (itemSize + 5) + quitButtonHeight + padding;
+                    const item = createNumberItem(values[i], i, forcedX, forcedY, itemSize);
+                    board.appendChild(item);
+                    placedItems.push(item);
                 }
             }
             
@@ -1070,7 +1158,7 @@
             const index = parseInt(item.dataset.index);
             
             if (index === gameState.currentNumber) {
-                // 正解
+                // 正解 - 即座に音を再生
                 playCorrectSound();
                 item.classList.add('found');
                 gameState.currentNumber++;
@@ -1090,7 +1178,7 @@
                     updateStatus();
                 }
             } else {
-                // 不正解
+                // 不正解 - 即座に音を再生
                 playErrorSound();
                 item.classList.add('error');
                 setTimeout(() => {
