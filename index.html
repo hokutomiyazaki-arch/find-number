@@ -139,6 +139,56 @@
             padding: 60px 20px 20px;
             overflow-y: auto;
         }
+        
+        /* ランキング表示 */
+        .ranking-display {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .ranking-display h4 {
+            font-size: 1rem;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .ranking-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 5px 0;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .ranking-entry.gold {
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .ranking-entry.silver {
+            background: linear-gradient(135deg, #C0C0C0, #808080);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .ranking-entry.bronze {
+            background: linear-gradient(135deg, #CD7F32, #8B4513);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .no-records {
+            text-align: center;
+            color: #999;
+            padding: 10px;
+            font-style: italic;
+        }
 
         .side-menu.active {
             left: 0;
@@ -661,6 +711,21 @@
             <div class="menu-section">
                 <h3>ベストスコア</h3>
                 <div class="menu-item">
+                    <label>表示する記録</label>
+                    <select id="rankingType">
+                        <option value="numbers_20">数字 20個</option>
+                        <option value="numbers_30">数字 30個</option>
+                        <option value="numbers_40">数字 40個</option>
+                        <option value="alphabet_20">アルファベット 20個</option>
+                        <option value="alphabet_30">アルファベット 30個</option>
+                        <option value="alphabet_40">アルファベット 40個</option>
+                    </select>
+                </div>
+                <div class="ranking-display" id="rankingDisplay">
+                    <h4>TOP 3 ランキング</h4>
+                    <div id="rankingList"></div>
+                </div>
+                <div class="menu-item">
                     <button id="clearScores">スコアをクリア</button>
                 </div>
             </div>
@@ -854,7 +919,9 @@
             saveScore: document.getElementById('saveScore'),
             skipSave: document.getElementById('skipSave'),
             scoresList: document.getElementById('scoresList'),
-            quitButton: document.getElementById('quitButton')
+            quitButton: document.getElementById('quitButton'),
+            rankingType: document.getElementById('rankingType'),
+            rankingList: document.getElementById('rankingList')
         };
 
         // スプラッシュスクリーン
@@ -1249,7 +1316,12 @@
             const key = `bestScores_${gameState.gameType}_${gameState.itemCount}`;
             const scores = JSON.parse(localStorage.getItem(key) || '[]');
             
-            if (scores.length < 5 || time < scores[scores.length - 1].time) {
+            // スコアが5位以内に入るか、まだ5件未満の場合のみ更新とみなす
+            const isNewBestScore = scores.length === 0 || 
+                                  (scores.length < 5 && !scores.some(s => s.time === time)) || 
+                                  (scores.length > 0 && time < scores[Math.min(scores.length - 1, 4)].time);
+            
+            if (isNewBestScore) {
                 elements.bestScoreInput.style.display = 'block';
                 elements.playerName.value = '';
                 
@@ -1279,6 +1351,9 @@
             scores.splice(5); // トップ5のみ保持
             
             localStorage.setItem(key, JSON.stringify(scores));
+            
+            // ランキング表示を更新
+            updateRankingDisplay();
         }
 
         function displayScores() {
@@ -1301,12 +1376,54 @@
                 elements.scoresList.appendChild(entry);
             });
         }
+        
+        // ランキング表示機能
+        function updateRankingDisplay() {
+            const selectedValue = elements.rankingType.value;
+            const [type, count] = selectedValue.split('_');
+            const key = `bestScores_${type}_${count}`;
+            const scores = JSON.parse(localStorage.getItem(key) || '[]');
+            
+            elements.rankingList.innerHTML = '';
+            
+            if (scores.length === 0) {
+                elements.rankingList.innerHTML = '<div class="no-records">記録がありません</div>';
+                return;
+            }
+            
+            // TOP3のみ表示
+            const top3 = scores.slice(0, 3);
+            top3.forEach((score, index) => {
+                const minutes = Math.floor(score.time / 60000);
+                const seconds = Math.floor((score.time % 60000) / 1000);
+                const milliseconds = Math.floor((score.time % 1000) / 10);
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+                
+                const entry = document.createElement('div');
+                const rankClass = index === 0 ? 'gold' : index === 1 ? 'silver' : 'bronze';
+                entry.className = `ranking-entry ${rankClass}`;
+                
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                entry.innerHTML = `
+                    <span>${medal} ${score.name}</span>
+                    <span>${timeString}</span>
+                `;
+                elements.rankingList.appendChild(entry);
+            });
+        }
+        
+        // ランキングタイプ変更時
+        elements.rankingType.addEventListener('change', updateRankingDisplay);
+        
+        // 初期ランキング表示
+        updateRankingDisplay();
 
         // スコアクリア
         elements.clearScores.addEventListener('click', () => {
             if (confirm('すべてのベストスコアを削除しますか？')) {
                 localStorage.clear();
                 alert('ベストスコアを削除しました');
+                updateRankingDisplay(); // ランキング表示を更新
             }
         });
 
