@@ -10,15 +10,16 @@
     <!-- PWA設定 -->
     <meta name="application-name" content="Speed Touch">
     <meta name="apple-mobile-web-app-title" content="Speed Touch">
+    <meta name="description" content="数字を順番にタップする認知トレーニングゲーム">
     
     <!-- アイコン設定 -->
-    <link rel="icon" href="https://hokutomiyazaki-arch.github.io/find-number/FNT512.png">
-    <link rel="apple-touch-icon" href="https://hokutomiyazaki-arch.github.io/find-number/FNT512.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="https://hokutomiyazaki-arch.github.io/find-number/FNT512.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="https://hokutomiyazaki-arch.github.io/find-number/FNT512.png">
+    <link rel="icon" href="FNT512.png">
+    <link rel="apple-touch-icon" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="FNT512.png">
     
     <!-- テーマカラー -->
-    <meta name="theme-color" content="#4A90E2">
+    <meta name="theme-color" content="#667eea">
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
@@ -41,7 +42,7 @@
             color: #333;
             min-height: 100vh;
             width: 100vw;
-            overflow-x: hidden;
+            overflow: hidden;
             position: fixed;
             top: 0;
             left: 0;
@@ -56,6 +57,33 @@
             flex-direction: column;
             position: relative;
             overflow: hidden;
+        }
+
+        .container.fullscreen-mode {
+            display: none !important;
+        }
+
+        /* フルスクリーンゲームコンテナ */
+        .fullscreen-game-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 10000;
+        }
+
+        .fullscreen-game-container.active {
+            display: block;
+        }
+
+        .fullscreen-game-board {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
         }
 
         /* ヘッダー */
@@ -111,6 +139,7 @@
             height: 2px;
             background: white;
             transition: all 0.3s;
+            pointer-events: none;
         }
 
         .menu-toggle.active span:nth-child(1) {
@@ -183,11 +212,6 @@
             border: none;
             cursor: pointer;
             font-weight: 600;
-            transition: transform 0.2s;
-        }
-
-        .menu-item button:active {
-            transform: scale(0.95);
         }
 
         /* トレーニング説明 */
@@ -225,46 +249,42 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
 
-        /* フルスクリーン時のゲームエリア調整 */
-        body:fullscreen .game-area,
-        body:-webkit-full-screen .game-area,
-        body:-moz-full-screen .game-area,
-        body:-ms-fullscreen .game-area {
-            margin: 0;
-            border-radius: 0;
-            height: calc(100vh - 140px); /* ヘッダーとフッターを除く */
-        }
-
         .game-board {
             width: 100%;
             height: 100%;
             position: relative;
         }
 
-        /* 終了ボタン */
+        /* 終了ボタン - 重要：z-indexを最大値に */
         .quit-button {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 8px 20px;
-            background: rgba(231, 76, 60, 0.9);
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            padding: 12px 30px;
+            background: #e74c3c;
             color: white;
-            border: none;
-            border-radius: 8px;
+            border: 2px solid white;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
-            z-index: 40;
+            z-index: 999999 !important;
             display: none;
-            font-size: 0.9rem;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 1.1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.2s;
         }
 
         .quit-button.show {
-            display: block;
+            display: block !important;
         }
 
         .quit-button:hover {
-            background: rgba(231, 76, 60, 1);
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .quit-button:active {
+            transform: scale(0.95);
         }
 
         .number-item {
@@ -294,13 +314,6 @@
         .color-5 { background: linear-gradient(135deg, #DDA0DD, #BA55D3); }
         .color-6 { background: linear-gradient(135deg, #FF8C42, #FF6B35); }
         .color-7 { background: linear-gradient(135deg, #6C5CE7, #5F3DC4); }
-        .color-8 { background: linear-gradient(135deg, #A8E6CF, #7FCDBB); }
-        .color-9 { background: linear-gradient(135deg, #FFB6C1, #FF69B4); }
-        .color-10 { background: linear-gradient(135deg, #00B894, #00916E); }
-        .color-11 { background: linear-gradient(135deg, #FDCB6E, #F39C12); }
-        .color-12 { background: linear-gradient(135deg, #E17055, #D63031); }
-        .color-13 { background: linear-gradient(135deg, #74B9FF, #0984E3); }
-        .color-14 { background: linear-gradient(135deg, #A29BFE, #6C5CE7); }
 
         .number-item:active {
             transform: scale(0.9);
@@ -308,6 +321,7 @@
 
         .number-item.found {
             animation: found 0.5s ease forwards;
+            pointer-events: none;
         }
 
         .number-item.error {
@@ -353,7 +367,6 @@
             color: #667eea;
         }
 
-        /* タイマー */
         .timer {
             font-size: 2rem;
             font-weight: bold;
@@ -406,70 +419,32 @@
             align-items: center;
             z-index: 50;
             padding: 20px;
-            overflow-y: auto;
-        }
-
-        .result-title {
-            font-size: 2rem;
-            margin-bottom: 20px;
-            color: #667eea;
         }
 
         .result-time {
             font-size: 3rem;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin: 20px 0;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .best-score-input {
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        .best-score-input input {
-            padding: 10px;
-            font-size: 1.2rem;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            width: 200px;
-        }
-
-        .save-score-btn {
-            padding: 10px 30px;
+        /* フルスクリーンボタン */
+        .fullscreen-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 8px 15px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 1.1rem;
             cursor: pointer;
-            margin: 5px;
-        }
-
-        /* ベストスコア表示 */
-        .best-scores {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            max-width: 300px;
-            width: 100%;
-        }
-
-        .best-scores h3 {
-            margin-bottom: 10px;
-            color: #667eea;
-        }
-
-        .score-entry {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #eee;
+            font-size: 0.9rem;
+            z-index: 101;
         }
 
         /* スプラッシュスクリーン */
@@ -536,70 +511,55 @@
             min-height: 40px;
         }
 
-        /* フルスクリーンボタン */
-        .fullscreen-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 8px 15px;
+        /* インストール促進バナー */
+        .install-banner {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .install-banner.show {
+            display: block;
+        }
+
+        .install-banner button {
+            margin: 5px;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .install-btn {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            z-index: 101;
         }
 
-        /* レスポンシブ対応 */
+        .dismiss-btn {
+            background: #ddd;
+            color: #666;
+        }
+
         @media (max-width: 600px) {
             .number-item {
-                width: 42px;
-                height: 42px;
+                width: 45px;
+                height: 45px;
+                font-size: 1.1rem;
+            }
+            
+            .quit-button {
+                padding: 10px 20px;
                 font-size: 1rem;
-            }
-            
-            .title {
-                font-size: 1.2rem;
-            }
-            
-            .instructions {
-                font-size: 0.75rem;
-                padding: 10px;
-            }
-
-            .instructions h3 {
-                font-size: 0.9rem;
-            }
-
-            .splash-title {
-                font-size: 1.2rem;
-            }
-
-            .splash-subtitle {
-                font-size: 2rem;
-            }
-        }
-
-        @media (min-width: 768px) {
-            .container {
-                max-width: 768px;
-                margin: 0 auto;
-            }
-            
-            .number-item {
-                width: 55px;
-                height: 55px;
-                font-size: 1.3rem;
-            }
-        }
-
-        /* フルスクリーン時の調整 */
-        @media screen and (display-mode: fullscreen) {
-            .game-area {
-                margin: 0;
-                border-radius: 0;
             }
         }
     </style>
@@ -607,13 +567,20 @@
 <body>
     <!-- スプラッシュスクリーン -->
     <div class="splash-screen" id="splashScreen">
-        <img src="https://hokutomiyazaki-arch.github.io/find-number/FNT512.png" alt="FNT Logo" class="splash-logo">
+        <img src="FNT512.png" alt="FNT Logo" class="splash-logo">
         <div class="splash-title">Functional Neuro Training</div>
         <div class="splash-subtitle">Speed Touch</div>
         <div class="splash-copyright">© Functional Neuro Training</div>
     </div>
 
-    <div class="container">
+    <!-- インストール促進バナー -->
+    <div class="install-banner" id="installBanner">
+        <p>ホーム画面に追加して、アプリとして使用できます！</p>
+        <button class="install-btn" id="installBtn">インストール</button>
+        <button class="dismiss-btn" id="dismissBtn">後で</button>
+    </div>
+
+    <div class="container" id="mainContainer">
         <!-- ヘッダー -->
         <div class="header">
             <button class="menu-toggle" id="menuToggle">
@@ -621,7 +588,7 @@
                 <span></span>
                 <span></span>
             </button>
-            <img src="https://hokutomiyazaki-arch.github.io/find-number/FNT512-transparent.png" alt="FNT Logo" class="logo">
+            <img src="FNT512-transparent.png" alt="FNT Logo" class="logo">
             <h1 class="title">Speed Touch</h1>
             <button class="fullscreen-btn" id="fullscreenBtn">全画面</button>
         </div>
@@ -657,13 +624,6 @@
                     </select>
                 </div>
             </div>
-            
-            <div class="menu-section">
-                <h3>ベストスコア</h3>
-                <div class="menu-item">
-                    <button id="clearScores">スコアをクリア</button>
-                </div>
-            </div>
         </div>
 
         <!-- トレーニング説明 -->
@@ -678,9 +638,6 @@
         <!-- ゲームエリア -->
         <div class="game-area">
             <div class="game-board" id="gameBoard">
-                <!-- 終了ボタン -->
-                <button class="quit-button" id="quitButton">終了</button>
-                
                 <!-- スタート画面 -->
                 <div class="start-screen" id="startScreen">
                     <button class="start-button" id="startButton">START</button>
@@ -688,21 +645,9 @@
                 
                 <!-- 結果画面 -->
                 <div class="result-screen" id="resultScreen">
-                    <h2 class="result-title">完了！</h2>
+                    <h2 style="font-size: 2rem; color: #667eea;">完了！</h2>
                     <div class="result-time" id="resultTime">00:00</div>
-                    <div class="best-score-input" id="bestScoreInput" style="display: none;">
-                        <p style="color: #FFD700; font-size: 1.3rem; font-weight: bold;">🎉 ベストスコア更新！ 🎉</p>
-                        <p>1位の記録を更新しました！</p>
-                        <input type="text" id="playerName" placeholder="名前を入力" maxlength="20">
-                        <br>
-                        <button class="save-score-btn" id="saveScore">保存</button>
-                        <button class="save-score-btn" id="skipSave">スキップ</button>
-                    </div>
                     <button class="start-button" id="restartButton">もう一度</button>
-                    <div class="best-scores" id="bestScoresList">
-                        <h3>ベストスコア</h3>
-                        <div id="scoresList"></div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -728,10 +673,19 @@
         </div>
     </div>
 
+    <!-- フルスクリーンゲームコンテナ -->
+    <div class="fullscreen-game-container" id="fullscreenContainer">
+        <div class="fullscreen-game-board" id="fullscreenBoard"></div>
+    </div>
+
+    <!-- 終了ボタン（フルスクリーン用） -->
+    <button class="quit-button" id="quitButton">終了</button>
+
     <script>
         // ゲーム状態管理
         let gameState = {
             isPlaying: false,
+            isFullscreen: false,
             gameType: 'numbers',
             itemCount: 20,
             currentNumber: 1,
@@ -740,96 +694,76 @@
             timerInterval: null,
             soundEnabled: true,
             positions: [],
-            boardDimensions: null,
-            audioBuffers: {}
+            audioContext: null
         };
 
-        // 音声管理
-        let audioContext = null;
-        
-        function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                // 事前に音声バッファを生成
-                preloadSounds();
+        // 音声システムの初期化（改善版）
+        function initAudioContext() {
+            if (!gameState.audioContext) {
+                gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            // サスペンド状態の場合は再開
+            if (gameState.audioContext.state === 'suspended') {
+                gameState.audioContext.resume();
             }
         }
 
-        // 音声を事前に準備
-        function preloadSounds() {
-            // 正解音のバッファを作成
-            const correctBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
-            const correctData = correctBuffer.getChannelData(0);
-            for (let i = 0; i < correctData.length; i++) {
-                correctData[i] = Math.sin(2 * Math.PI * 523 * i / audioContext.sampleRate) * 0.3;
-            }
-            gameState.audioBuffers.correct = correctBuffer;
-
-            // エラー音のバッファを作成
-            const errorBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.3, audioContext.sampleRate);
-            const errorData = errorBuffer.getChannelData(0);
-            for (let i = 0; i < errorData.length; i++) {
-                errorData[i] = (Math.random() * 2 - 1) * 0.3 * Math.exp(-i / errorData.length * 3);
-            }
-            gameState.audioBuffers.error = errorBuffer;
-        }
-
-        // 高速音声再生
-        function playBufferedSound(bufferName) {
-            if (!gameState.soundEnabled || !audioContext || !gameState.audioBuffers[bufferName]) return;
-            
-            const source = audioContext.createBufferSource();
-            const gainNode = audioContext.createGain();
-            
-            source.buffer = gameState.audioBuffers[bufferName];
-            gainNode.gain.value = 0.5;
-            
-            source.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            source.start(0);
-        }
-        
-        function playSound(frequency, duration, type = 'sine') {
+        // 音を鳴らす関数（Web Audio API使用）
+        function playSound(success) {
             if (!gameState.soundEnabled) return;
             
             try {
-                initAudio();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.type = type;
-                oscillator.frequency.value = frequency;
-                
-                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                initAudioContext();
+                const ctx = gameState.audioContext;
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
                 
                 oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
+                gainNode.connect(ctx.destination);
                 
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + duration);
+                if (success) {
+                    // 成功音：高い音
+                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+                } else {
+                    // エラー音：低い音
+                    oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+                }
+                
+                gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.3);
             } catch (e) {
-                console.log('Audio error:', e);
+                console.log('音声エラー:', e);
             }
         }
 
-        function playCorrectSound() {
-            // 即座に再生
-            playBufferedSound('correct');
-            // 追加の高音
-            setTimeout(() => playSound(659, 0.1), 100);
-        }
+        // PWAインストール
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+                document.getElementById('installBanner').classList.add('show');
+            }, 3000);
+        });
 
-        function playErrorSound() {
-            playBufferedSound('error');
-        }
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+            document.getElementById('installBanner').classList.remove('show');
+        });
 
-        function playCompleteSound() {
-            const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
-            notes.forEach((freq, i) => {
-                setTimeout(() => playSound(freq, 0.2), i * 150);
-            });
-        }
+        document.getElementById('dismissBtn').addEventListener('click', () => {
+            document.getElementById('installBanner').classList.remove('show');
+        });
 
         // DOM要素
         const elements = {
@@ -848,14 +782,11 @@
             gameType: document.getElementById('gameType'),
             itemCount: document.getElementById('itemCount'),
             soundToggle: document.getElementById('soundToggle'),
-            clearScores: document.getElementById('clearScores'),
             fullscreenBtn: document.getElementById('fullscreenBtn'),
-            bestScoreInput: document.getElementById('bestScoreInput'),
-            playerName: document.getElementById('playerName'),
-            saveScore: document.getElementById('saveScore'),
-            skipSave: document.getElementById('skipSave'),
-            scoresList: document.getElementById('scoresList'),
-            quitButton: document.getElementById('quitButton')
+            quitButton: document.getElementById('quitButton'),
+            mainContainer: document.getElementById('mainContainer'),
+            fullscreenContainer: document.getElementById('fullscreenContainer'),
+            fullscreenBoard: document.getElementById('fullscreenBoard')
         };
 
         // スプラッシュスクリーン
@@ -867,9 +798,18 @@
         }, 2000);
 
         // メニュー制御
-        elements.menuToggle.addEventListener('click', () => {
+        elements.menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
             elements.menuToggle.classList.toggle('active');
             elements.sideMenu.classList.toggle('active');
+        });
+
+        // メニュー外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            if (!elements.sideMenu.contains(e.target) && !elements.menuToggle.contains(e.target)) {
+                elements.menuToggle.classList.remove('active');
+                elements.sideMenu.classList.remove('active');
+            }
         });
 
         // 設定変更
@@ -886,22 +826,53 @@
         });
 
         // フルスクリーン
-        elements.fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log('Fullscreen error:', err);
-                });
-                elements.fullscreenBtn.textContent = '通常表示';
-            } else {
-                document.exitFullscreen();
-                elements.fullscreenBtn.textContent = '全画面';
-            }
-        });
+        elements.fullscreenBtn.addEventListener('click', enterFullscreenMode);
 
-        // 終了ボタン
-        elements.quitButton.addEventListener('click', () => {
-            if (confirm('ゲームを終了してホーム画面に戻りますか？')) {
+        function enterFullscreenMode() {
+            if (!gameState.isPlaying) {
+                alert('ゲームを開始してから全画面表示にしてください');
+                return;
+            }
+            
+            gameState.isFullscreen = true;
+            elements.mainContainer.classList.add('fullscreen-mode');
+            elements.fullscreenContainer.classList.add('active');
+            elements.quitButton.classList.add('show');
+            
+            // フルスクリーンAPIを使用
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen();
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            }
+            
+            // アイテムを全画面コンテナに移動
+            moveItemsToFullscreen();
+        }
+
+        function exitFullscreenMode() {
+            gameState.isFullscreen = false;
+            elements.mainContainer.classList.remove('fullscreen-mode');
+            elements.fullscreenContainer.classList.remove('active');
+            elements.quitButton.classList.remove('show');
+            
+            // フルスクリーンAPIを終了
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            
+            // アイテムを通常コンテナに戻す
+            moveItemsToNormal();
+        }
+
+        // 終了ボタンのイベントリスナー
+        elements.quitButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('ゲームを終了しますか？')) {
                 quitGame();
+                exitFullscreenMode();
             }
         });
 
@@ -909,12 +880,10 @@
             gameState.isPlaying = false;
             clearInterval(gameState.timerInterval);
             
-            // アイテムをクリア
-            const existingItems = elements.gameBoard.querySelectorAll('.number-item');
-            existingItems.forEach(item => item.remove());
+            // すべてのコンテナからアイテムをクリア
+            document.querySelectorAll('.number-item').forEach(item => item.remove());
             
             // 画面をリセット
-            elements.quitButton.classList.remove('show');
             elements.startScreen.style.display = 'flex';
             elements.resultScreen.style.display = 'none';
             
@@ -922,78 +891,39 @@
             elements.nextNumber.textContent = '1';
             elements.timer.textContent = '00:00';
             elements.remaining.textContent = gameState.itemCount;
+            
+            gameState.currentNumber = 1;
+            gameState.items = [];
+            gameState.positions = [];
         }
 
-        // アイテム配置の衝突検出
-        function checkOverlap(x, y, width, height, positions, excludeQuitButton = true) {
-            // 終了ボタンとの重なりチェック
-            if (excludeQuitButton) {
-                const quitBtnRect = elements.quitButton.getBoundingClientRect();
-                const boardRect = elements.gameBoard.getBoundingClientRect();
-                const quitBtnRelative = {
-                    x: quitBtnRect.left - boardRect.left,
-                    y: quitBtnRect.top - boardRect.top,
-                    width: quitBtnRect.width + 20, // マージンを追加
-                    height: quitBtnRect.height + 20
-                };
-                
-                if (x < quitBtnRelative.x + quitBtnRelative.width &&
-                    x + width > quitBtnRelative.x &&
-                    y < quitBtnRelative.y + quitBtnRelative.height &&
-                    y + height > quitBtnRelative.y) {
+        // アイテムの衝突検出
+        function checkOverlap(x, y, size, positions, margin = 10) {
+            // 終了ボタンエリアとの衝突チェック（フルスクリーン時のみ）
+            if (gameState.isFullscreen) {
+                // 右上のエリア（終了ボタン用）を除外
+                if (x > window.innerWidth - 200 && y < 100) {
                     return true;
                 }
             }
             
-            // 他のアイテムとの重なりチェック
+            // 他のアイテムとの衝突チェック
             for (const pos of positions) {
-                if (x < pos.x + pos.width &&
-                    x + width > pos.x &&
-                    y < pos.y + pos.height &&
-                    y + height > pos.y) {
+                const distance = Math.sqrt(
+                    Math.pow(x + size/2 - (pos.x + pos.size/2), 2) + 
+                    Math.pow(y + size/2 - (pos.y + pos.size/2), 2)
+                );
+                if (distance < (size + pos.size) / 2 + margin) {
                     return true;
                 }
             }
             return false;
         }
 
-        // 色を生成
-        function getColorClass(index) {
-            return `color-${index % 15}`;
-        }
-
-        // ゲームボードの実際のサイズを取得
-        function getBoardDimensions() {
-            const board = elements.gameBoard;
-            const rect = board.getBoundingClientRect();
-            const computedStyle = window.getComputedStyle(board);
-            const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
-            const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
-            const paddingTop = parseFloat(computedStyle.paddingTop) || 0;
-            const paddingBottom = parseFloat(computedStyle.paddingBottom) || 0;
-            
-            return {
-                width: rect.width - paddingLeft - paddingRight,
-                height: rect.height - paddingTop - paddingBottom,
-                paddingLeft,
-                paddingTop
-            };
-        }
-
-        // Fisher-Yates シャッフル
-        function shuffleArray(array) {
-            const newArray = [...array];
-            for (let i = newArray.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-            }
-            return newArray;
-        }
-
         // ゲーム開始
         function startGame() {
-            // Audio context を初期化
-            initAudio();
+            // 音声コンテキストを初期化（ユーザー操作時）
+            initAudioContext();
             
             gameState.isPlaying = true;
             gameState.currentNumber = 1;
@@ -1003,216 +933,170 @@
             
             elements.startScreen.style.display = 'none';
             elements.resultScreen.style.display = 'none';
-            elements.quitButton.classList.add('show');
             
-            // ゲームボードの実際のサイズを取得
-            gameState.boardDimensions = getBoardDimensions();
-            
-            // アイテムを生成
             const board = elements.gameBoard;
-            const dimensions = gameState.boardDimensions;
-            const itemSize = window.innerWidth < 600 ? 42 : 55;
-            const padding = 15;
-            
-            // フルスクリーンかどうかを判定
-            const isFullscreen = !!document.fullscreenElement || 
-                               !!document.webkitFullscreenElement || 
-                               !!document.mozFullScreenElement || 
-                               !!document.msFullscreenElement;
-            
-            // 終了ボタンエリアの高さ（フルスクリーンの場合も考慮）
-            const quitButtonHeight = isFullscreen ? 70 : 50;
+            const itemSize = window.innerWidth < 600 ? 45 : 50;
             
             // 既存のアイテムをクリア
-            const existingItems = board.querySelectorAll('.number-item');
-            existingItems.forEach(item => item.remove());
+            document.querySelectorAll('.number-item').forEach(item => item.remove());
             
-            // アイテムの値を生成
-            const values = [];
-            if (gameState.gameType === 'numbers') {
-                for (let i = 1; i <= gameState.itemCount; i++) {
-                    values.push(i.toString());
-                }
-            } else {
-                const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                for (let i = 0; i < Math.min(gameState.itemCount, 26); i++) {
-                    values.push(alphabet[i]);
-                }
-                // 26を超える場合はAA, AB...と続ける
-                if (gameState.itemCount > 26) {
-                    for (let i = 26; i < gameState.itemCount; i++) {
-                        const first = Math.floor((i - 26) / 26);
-                        const second = (i - 26) % 26;
-                        values.push(alphabet[first] + alphabet[second]);
-                    }
-                }
-            }
+            // ボードサイズを取得
+            const boardRect = board.getBoundingClientRect();
+            const boardWidth = boardRect.width;
+            const boardHeight = boardRect.height;
             
-            // 配置位置をランダムに生成
-            const placedItems = [];
-            
-            // まず、グリッド位置を生成してシャッフル
-            const gridPositions = [];
-            const cols = Math.ceil(Math.sqrt(gameState.itemCount * (dimensions.width / dimensions.height)));
-            const rows = Math.ceil(gameState.itemCount / cols);
-            const cellWidth = dimensions.width / cols;
-            const cellHeight = (dimensions.height - quitButtonHeight) / rows;
-            
-            // グリッド位置を生成
-            for (let i = 0; i < gameState.itemCount; i++) {
-                const row = Math.floor(i / cols);
-                const col = i % cols;
-                
-                const cellX = col * cellWidth;
-                const cellY = row * cellHeight + quitButtonHeight;
-                
-                // セル内でランダムな位置
-                const randomOffsetX = Math.random() * Math.max(0, cellWidth - itemSize - 10);
-                const randomOffsetY = Math.random() * Math.max(0, cellHeight - itemSize - 10);
-                
-                gridPositions.push({
-                    x: cellX + randomOffsetX + 5,
-                    y: cellY + randomOffsetY + 5
-                });
-            }
-            
-            // 位置をシャッフル
-            const shuffledPositions = shuffleArray(gridPositions);
-            
-            // 各値を配置
-            for (let i = 0; i < values.length; i++) {
+            // アイテムを配置
+            for (let i = 1; i <= gameState.itemCount; i++) {
                 let placed = false;
+                let attempts = 0;
+                const maxAttempts = 500;
                 
-                // まずシャッフルされた位置を試す
-                if (i < shuffledPositions.length) {
-                    const pos = shuffledPositions[i];
+                while (!placed && attempts < maxAttempts) {
+                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
+                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
                     
-                    // 他のアイテムや終了ボタンと重ならないかチェック
-                    if (!checkOverlap(pos.x, pos.y, itemSize, itemSize, gameState.positions, true)) {
-                        const item = createNumberItem(values[i], i, pos.x, pos.y, itemSize);
+                    if (!checkOverlap(x, y, itemSize, gameState.positions, 8)) {
+                        const item = createNumberItem(i, x, y, itemSize);
                         board.appendChild(item);
-                        placedItems.push(item);
-                        gameState.positions.push({ x: pos.x, y: pos.y, width: itemSize, height: itemSize });
+                        gameState.items.push(item);
+                        gameState.positions.push({ x, y, size: itemSize });
                         placed = true;
                     }
+                    attempts++;
                 }
                 
-                // シャッフル位置が使えない場合は完全ランダム
+                // 配置できない場合はグリッド配置
                 if (!placed) {
-                    let attempts = 0;
-                    const maxAttempts = 100;
-                    const maxX = dimensions.width - itemSize - padding;
-                    const maxY = dimensions.height - itemSize - quitButtonHeight - padding;
+                    const gridCols = Math.floor(boardWidth / (itemSize + 10));
+                    const row = Math.floor((i - 1) / gridCols);
+                    const col = (i - 1) % gridCols;
+                    const x = col * (itemSize + 10) + 10;
+                    const y = row * (itemSize + 10) + 10;
                     
-                    while (!placed && attempts < maxAttempts) {
-                        const x = Math.random() * maxX + padding;
-                        const y = Math.random() * maxY + quitButtonHeight + padding;
-                        
-                        if (!checkOverlap(x, y, itemSize, itemSize, gameState.positions, true)) {
-                            const item = createNumberItem(values[i], i, x, y, itemSize);
-                            board.appendChild(item);
-                            placedItems.push(item);
-                            gameState.positions.push({ x, y, width: itemSize, height: itemSize });
-                            placed = true;
-                        }
-                        attempts++;
-                    }
-                }
-                
-                // それでも配置できない場合は強制配置
-                if (!placed) {
-                    const forcedX = (i % 8) * (itemSize + 5) + padding;
-                    const forcedY = Math.floor(i / 8) * (itemSize + 5) + quitButtonHeight + padding;
-                    const item = createNumberItem(values[i], i, forcedX, forcedY, itemSize);
+                    const item = createNumberItem(i, x, y, itemSize);
                     board.appendChild(item);
-                    placedItems.push(item);
+                    gameState.items.push(item);
+                    gameState.positions.push({ x, y, size: itemSize });
                 }
             }
             
-            // イベントリスナーを追加
-            placedItems.forEach(item => {
-                item.addEventListener('click', handleItemClick);
-                item.addEventListener('touchstart', handleItemClick);
-            });
-            
-            gameState.items = placedItems;
-            
-            // ステータス更新
             updateStatus();
             startTimer();
         }
 
+        // フルスクリーン時のアイテム移動
+        function moveItemsToFullscreen() {
+            const items = Array.from(document.querySelectorAll('.number-item'));
+            const fullBoard = elements.fullscreenBoard;
+            const itemSize = window.innerWidth < 600 ? 45 : 50;
+            
+            gameState.positions = [];
+            
+            // フルスクリーンボードのサイズ
+            const boardWidth = window.innerWidth;
+            const boardHeight = window.innerHeight;
+            
+            items.forEach((item) => {
+                let placed = false;
+                let attempts = 0;
+                const maxAttempts = 200;
+                
+                while (!placed && attempts < maxAttempts) {
+                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
+                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
+                    
+                    if (!checkOverlap(x, y, itemSize, gameState.positions, 10)) {
+                        item.style.left = x + 'px';
+                        item.style.top = y + 'px';
+                        gameState.positions.push({ x, y, size: itemSize });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+                
+                // 配置できない場合はグリッド配置
+                if (!placed) {
+                    const gridCols = Math.floor((boardWidth - 200) / (itemSize + 10));
+                    const index = gameState.positions.length;
+                    const row = Math.floor(index / gridCols);
+                    const col = index % gridCols;
+                    const x = col * (itemSize + 10) + 10;
+                    const y = row * (itemSize + 10) + 100; // 上部は終了ボタン用
+                    
+                    item.style.left = x + 'px';
+                    item.style.top = y + 'px';
+                    gameState.positions.push({ x, y, size: itemSize });
+                }
+                
+                fullBoard.appendChild(item);
+            });
+        }
+
+        // 通常モードへのアイテム移動
+        function moveItemsToNormal() {
+            const items = Array.from(elements.fullscreenBoard.querySelectorAll('.number-item'));
+            const normalBoard = elements.gameBoard;
+            
+            items.forEach(item => {
+                normalBoard.appendChild(item);
+            });
+        }
+
         // 数字アイテムを作成
-        function createNumberItem(value, index, x, y, size) {
+        function createNumberItem(value, x, y, size) {
             const item = document.createElement('div');
-            item.className = `number-item ${getColorClass(index)}`;
-            item.textContent = value;
+            item.className = `number-item color-${(value - 1) % 8}`;
+            item.textContent = gameState.gameType === 'numbers' ? value : 
+                             String.fromCharCode(64 + value);
             item.style.left = x + 'px';
             item.style.top = y + 'px';
             item.style.width = size + 'px';
             item.style.height = size + 'px';
             item.dataset.value = value;
-            item.dataset.index = index + 1;
+            
+            // クリックイベント
+            item.addEventListener('click', (e) => handleItemClick(e, item, value));
+            item.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleItemClick(e, item, value);
+            });
+            
             return item;
         }
 
         // アイテムクリック処理
-        function handleItemClick(e) {
-            e.preventDefault();
+        function handleItemClick(e, item, value) {
             e.stopPropagation();
-            
             if (!gameState.isPlaying) return;
             
-            const item = e.currentTarget;
-            const index = parseInt(item.dataset.index);
-            
-            if (index === gameState.currentNumber) {
-                // 正解 - 即座に音を再生
-                playCorrectSound();
+            if (value === gameState.currentNumber) {
                 item.classList.add('found');
                 gameState.currentNumber++;
-                
-                // イベントリスナーを削除
-                item.removeEventListener('click', handleItemClick);
-                item.removeEventListener('touchstart', handleItemClick);
+                playSound(true);
                 
                 setTimeout(() => {
-                    item.style.display = 'none';
+                    item.remove();
                 }, 400);
                 
                 if (gameState.currentNumber > gameState.itemCount) {
-                    // ゲーム完了
                     endGame();
                 } else {
                     updateStatus();
                 }
             } else {
-                // 不正解 - 即座に音を再生
-                playErrorSound();
                 item.classList.add('error');
+                playSound(false);
                 setTimeout(() => {
                     item.classList.remove('error');
                 }, 500);
             }
         }
 
-        // アルファベット値を取得
-        function getAlphabetValue(num) {
-            const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            if (num <= 26) {
-                return alphabet[num - 1];
-            } else {
-                const first = Math.floor((num - 27) / 26);
-                const second = (num - 27) % 26;
-                return alphabet[first] + alphabet[second];
-            }
-        }
-
         // ステータス更新
         function updateStatus() {
-            const nextValue = gameState.gameType === 'numbers' 
-                ? gameState.currentNumber
-                : getAlphabetValue(gameState.currentNumber);
+            const nextValue = gameState.gameType === 'numbers' ? 
+                            gameState.currentNumber : 
+                            String.fromCharCode(64 + gameState.currentNumber);
             
             elements.nextNumber.textContent = nextValue;
             elements.remaining.textContent = gameState.itemCount - gameState.currentNumber + 1;
@@ -1235,116 +1119,42 @@
             gameState.isPlaying = false;
             clearInterval(gameState.timerInterval);
             
-            playCompleteSound();
-            
             const elapsed = Date.now() - gameState.startTime;
             const minutes = Math.floor(elapsed / 60000);
             const seconds = Math.floor((elapsed % 60000) / 1000);
-            const milliseconds = Math.floor((elapsed % 1000) / 10);
             
-            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-            elements.resultTime.textContent = timeString;
+            elements.resultTime.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
+            // 終了ボタンを非表示
             elements.quitButton.classList.remove('show');
             
-            // ベストスコアチェック
-            checkBestScore(elapsed);
+            if (gameState.isFullscreen) {
+                exitFullscreenMode();
+            }
             
             elements.resultScreen.style.display = 'flex';
-        }
-
-        // ベストスコア管理
-        function checkBestScore(time) {
-            const key = `bestScores_${gameState.gameType}_${gameState.itemCount}`;
-            const scores = JSON.parse(localStorage.getItem(key) || '[]');
             
-            if (scores.length < 5 || time < scores[scores.length - 1].time) {
-                elements.bestScoreInput.style.display = 'block';
-                elements.playerName.value = '';
-                
-                elements.saveScore.onclick = () => {
-                    const name = elements.playerName.value.trim() || '名無し';
-                    saveScore(name, time);
-                    elements.bestScoreInput.style.display = 'none';
-                    displayScores();
-                };
-                
-                elements.skipSave.onclick = () => {
-                    elements.bestScoreInput.style.display = 'none';
-                    displayScores();
-                };
-            } else {
-                elements.bestScoreInput.style.display = 'none';
-                displayScores();
+            // 完了音
+            if (gameState.soundEnabled) {
+                setTimeout(() => playSound(true), 100);
+                setTimeout(() => playSound(true), 300);
+                setTimeout(() => playSound(true), 500);
             }
         }
 
-        function saveScore(name, time) {
-            const key = `bestScores_${gameState.gameType}_${gameState.itemCount}`;
-            const scores = JSON.parse(localStorage.getItem(key) || '[]');
-            
-            scores.push({ name, time, date: new Date().toLocaleDateString() });
-            scores.sort((a, b) => a.time - b.time);
-            scores.splice(5); // トップ5のみ保持
-            
-            localStorage.setItem(key, JSON.stringify(scores));
-        }
-
-        function displayScores() {
-            const key = `bestScores_${gameState.gameType}_${gameState.itemCount}`;
-            const scores = JSON.parse(localStorage.getItem(key) || '[]');
-            
-            elements.scoresList.innerHTML = '';
-            scores.forEach((score, index) => {
-                const minutes = Math.floor(score.time / 60000);
-                const seconds = Math.floor((score.time % 60000) / 1000);
-                const milliseconds = Math.floor((score.time % 1000) / 10);
-                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
-                
-                const entry = document.createElement('div');
-                entry.className = 'score-entry';
-                entry.innerHTML = `
-                    <span>${index + 1}. ${score.name}</span>
-                    <span>${timeString}</span>
-                `;
-                elements.scoresList.appendChild(entry);
-            });
-        }
-
-        // スコアクリア
-        elements.clearScores.addEventListener('click', () => {
-            if (confirm('すべてのベストスコアを削除しますか？')) {
-                localStorage.clear();
-                alert('ベストスコアを削除しました');
-                updateRankingDisplay(); // ランキング表示を更新
-            }
-        });
-
-        // イベントリスナー（ユーザー操作が必要な処理）
+        // イベントリスナー（音声初期化のためクリックイベントを使用）
         elements.startButton.addEventListener('click', (e) => {
-            e.preventDefault();
+            e.stopPropagation();
             startGame();
         });
         
         elements.restartButton.addEventListener('click', (e) => {
-            e.preventDefault();
+            e.stopPropagation();
             startGame();
         });
 
-        // タッチイベントの最適化
-        document.addEventListener('touchstart', function(e) {
-            if (e.touches.length > 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        // スクロール防止
-        document.body.addEventListener('touchmove', function(e) {
-            if (e.target.closest('.side-menu')) return;
-            e.preventDefault();
-        }, { passive: false });
-
-        // Service Worker登録（PWA対応）
+        // Service Worker登録
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').catch(err => {
@@ -1352,6 +1162,20 @@
                 });
             });
         }
+
+        // タッチイベント最適化
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 横スクロール防止
+        document.addEventListener('touchmove', function(e) {
+            if (!e.target.closest('.side-menu')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
     </script>
 </body>
 </html>
