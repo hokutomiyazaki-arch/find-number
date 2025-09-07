@@ -1,12 +1,13 @@
 {
   "name": "Speed Touch - 数字順番タッチゲーム",
   "short_name": "Speed Touch",
-  "description": "数字を順番にタップして認知機能を鍛えるトレーニングゲーム",
-  "start_url": "/",
+  "description": "数字を順番にタップする認知トレーニングゲーム",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#667eea",
   "orientation": "portrait",
+  "scope": "./",
   "icons": [
     {
       "src": "FNT512.png",
@@ -41,14 +42,7 @@
     }
   ],
   "categories": ["games", "education", "health"],
-  "screenshots": [
-    {
-      "src": "screenshot1.png",
-      "sizes": "1280x720",
-      "type": "image/png"
-    }
-  ],
-  "prefer_related_applications": false,
-  "scope": "/",
-  "lang": "ja"
+  "lang": "ja",
+  "dir": "ltr",
+  "prefer_related_applications": false
 }
