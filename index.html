@@ -255,12 +255,12 @@
             position: relative;
         }
 
-        /* 終了ボタン - 重要：z-indexを最大値に */
+        /* 終了ボタン */
         .quit-button {
-            position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
-            padding: 12px 30px;
+            position: absolute !important;
+            top: 10px !important;
+            right: 10px !important;
+            padding: 10px 25px;
             background: #e74c3c;
             color: white;
             border: 2px solid white;
@@ -269,13 +269,21 @@
             font-weight: bold;
             z-index: 999999 !important;
             display: none;
-            font-size: 1.1rem;
+            font-size: 1rem;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.2s;
         }
 
         .quit-button.show {
             display: block !important;
+        }
+
+        .quit-button.fullscreen {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            padding: 12px 30px;
+            font-size: 1.1rem;
         }
 
         .quit-button:hover {
@@ -649,6 +657,9 @@
                     <div class="result-time" id="resultTime">00:00</div>
                     <button class="start-button" id="restartButton">もう一度</button>
                 </div>
+                
+                <!-- 終了ボタン（ゲームエリア内） -->
+                <button class="quit-button" id="quitButton">終了</button>
             </div>
         </div>
 
@@ -678,9 +689,6 @@
         <div class="fullscreen-game-board" id="fullscreenBoard"></div>
     </div>
 
-    <!-- 終了ボタン（フルスクリーン用） -->
-    <button class="quit-button" id="quitButton">終了</button>
-
     <script>
         // ゲーム状態管理
         let gameState = {
@@ -697,18 +705,17 @@
             audioContext: null
         };
 
-        // 音声システムの初期化（改善版）
+        // 音声システムの初期化
         function initAudioContext() {
             if (!gameState.audioContext) {
                 gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
-            // サスペンド状態の場合は再開
             if (gameState.audioContext.state === 'suspended') {
                 gameState.audioContext.resume();
             }
         }
 
-        // 音を鳴らす関数（Web Audio API使用）
+        // 音を鳴らす
         function playSound(success) {
             if (!gameState.soundEnabled) return;
             
@@ -722,11 +729,9 @@
                 gainNode.connect(ctx.destination);
                 
                 if (success) {
-                    // 成功音：高い音
                     oscillator.frequency.setValueAtTime(800, ctx.currentTime);
                     oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
                 } else {
-                    // エラー音：低い音
                     oscillator.frequency.setValueAtTime(200, ctx.currentTime);
                     oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
                 }
@@ -825,89 +830,139 @@
             gameState.soundEnabled = e.target.value === 'on';
         });
 
-        // フルスクリーン
+        // フルスクリーンボタン
         elements.fullscreenBtn.addEventListener('click', enterFullscreenMode);
 
+        // ゲーム開始
+        function startGame() {
+            initAudioContext();
+            
+            gameState.isPlaying = true;
+            gameState.currentNumber = 1;
+            gameState.items = [];
+            gameState.positions = [];
+            gameState.startTime = Date.now();
+            
+            elements.startScreen.style.display = 'none';
+            elements.resultScreen.style.display = 'none';
+            elements.quitButton.classList.add('show'); // 終了ボタンを表示
+            
+            // まずアイテムを配置
+            placeItems();
+            updateStatus();
+            startTimer();
+            
+            // その後、自動的に全画面化
+            setTimeout(() => {
+                enterFullscreenMode();
+                // 全画面化後にアイテムを再配置
+                setTimeout(() => {
+                    placeItems();
+                }, 200);
+            }, 100);
+        }
+
+        // フルスクリーンモードに入る
         function enterFullscreenMode() {
-            if (!gameState.isPlaying) {
-                alert('ゲームを開始してから全画面表示にしてください');
-                return;
-            }
+            if (!gameState.isPlaying) return;
             
             gameState.isFullscreen = true;
             elements.mainContainer.classList.add('fullscreen-mode');
             elements.fullscreenContainer.classList.add('active');
-            elements.quitButton.classList.add('show');
+            elements.quitButton.classList.add('fullscreen');
             
             // フルスクリーンAPIを使用
             if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen();
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Fullscreen error:', err);
+                });
             } else if (document.documentElement.webkitRequestFullscreen) {
                 document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+                document.documentElement.msRequestFullscreen();
             }
-            
-            // アイテムを全画面コンテナに移動
-            moveItemsToFullscreen();
         }
 
+        // フルスクリーンモードを終了
         function exitFullscreenMode() {
             gameState.isFullscreen = false;
             elements.mainContainer.classList.remove('fullscreen-mode');
             elements.fullscreenContainer.classList.remove('active');
-            elements.quitButton.classList.remove('show');
+            elements.quitButton.classList.remove('fullscreen');
             
-            // フルスクリーンAPIを終了
             if (document.exitFullscreen) {
                 document.exitFullscreen();
             } else if (document.webkitExitFullscreen) {
                 document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
             }
-            
-            // アイテムを通常コンテナに戻す
-            moveItemsToNormal();
         }
 
-        // 終了ボタンのイベントリスナー
-        elements.quitButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (confirm('ゲームを終了しますか？')) {
-                quitGame();
-                exitFullscreenMode();
-            }
-        });
-
-        function quitGame() {
-            gameState.isPlaying = false;
-            clearInterval(gameState.timerInterval);
+        // アイテム配置
+        function placeItems() {
+            const board = gameState.isFullscreen ? elements.fullscreenBoard : elements.gameBoard;
+            const itemSize = window.innerWidth < 600 ? 45 : 50;
             
-            // すべてのコンテナからアイテムをクリア
+            // 既存のアイテムをクリア
             document.querySelectorAll('.number-item').forEach(item => item.remove());
-            
-            // 画面をリセット
-            elements.startScreen.style.display = 'flex';
-            elements.resultScreen.style.display = 'none';
-            
-            // ステータスをリセット
-            elements.nextNumber.textContent = '1';
-            elements.timer.textContent = '00:00';
-            elements.remaining.textContent = gameState.itemCount;
-            
-            gameState.currentNumber = 1;
-            gameState.items = [];
             gameState.positions = [];
-        }
-
-        // アイテムの衝突検出
-        function checkOverlap(x, y, size, positions, margin = 10) {
-            // 終了ボタンエリアとの衝突チェック（フルスクリーン時のみ）
-            if (gameState.isFullscreen) {
-                // 右上のエリア（終了ボタン用）を除外
-                if (x > window.innerWidth - 200 && y < 100) {
-                    return true;
+            gameState.items = [];
+            
+            // ボードサイズを取得
+            const boardWidth = gameState.isFullscreen ? window.innerWidth : board.clientWidth;
+            const boardHeight = gameState.isFullscreen ? window.innerHeight : board.clientHeight;
+            
+            // 終了ボタンのエリアを考慮
+            const quitButtonArea = {
+                x: boardWidth - 150,
+                y: 0,
+                width: 150,
+                height: 80
+            };
+            
+            for (let i = 1; i <= gameState.itemCount; i++) {
+                let placed = false;
+                let attempts = 0;
+                const maxAttempts = 500;
+                
+                while (!placed && attempts < maxAttempts) {
+                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
+                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
+                    
+                    const inQuitArea = (x + itemSize > quitButtonArea.x && y < quitButtonArea.height);
+                    
+                    if (!inQuitArea && !checkOverlap(x, y, itemSize, gameState.positions, 8)) {
+                        const item = createNumberItem(i, x, y, itemSize);
+                        board.appendChild(item);
+                        gameState.items.push(item);
+                        gameState.positions.push({ x, y, size: itemSize });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+                
+                if (!placed) {
+                    const gridCols = Math.floor((boardWidth - 160) / (itemSize + 10));
+                    const row = Math.floor((i - 1) / gridCols);
+                    const col = (i - 1) % gridCols;
+                    let x = col * (itemSize + 10) + 10;
+                    let y = row * (itemSize + 10) + 90;
+                    
+                    const item = createNumberItem(i, x, y, itemSize);
+                    board.appendChild(item);
+                    gameState.items.push(item);
+                    gameState.positions.push({ x, y, size: itemSize });
                 }
             }
-            
-            // 他のアイテムとの衝突チェック
+        }
+
+        // アイテムの重なりチェック
+        function checkOverlap(x, y, size, positions, margin = 10) {
             for (const pos of positions) {
                 const distance = Math.sqrt(
                     Math.pow(x + size/2 - (pos.x + pos.size/2), 2) + 
@@ -920,141 +975,37 @@
             return false;
         }
 
-        // ゲーム開始
-        function startGame() {
-            // 音声コンテキストを初期化（ユーザー操作時）
-            initAudioContext();
-            
-            gameState.isPlaying = true;
-            gameState.currentNumber = 1;
-            gameState.items = [];
-            gameState.positions = [];
-            gameState.startTime = Date.now();
-            
-            elements.startScreen.style.display = 'none';
-            elements.resultScreen.style.display = 'none';
-            
-            const board = elements.gameBoard;
-            const itemSize = window.innerWidth < 600 ? 45 : 50;
-            
-            // 既存のアイテムをクリア
-            document.querySelectorAll('.number-item').forEach(item => item.remove());
-            
-            // ボードサイズを取得
-            const boardRect = board.getBoundingClientRect();
-            const boardWidth = boardRect.width;
-            const boardHeight = boardRect.height;
-            
-            // アイテムを配置
-            for (let i = 1; i <= gameState.itemCount; i++) {
-                let placed = false;
-                let attempts = 0;
-                const maxAttempts = 500;
-                
-                while (!placed && attempts < maxAttempts) {
-                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
-                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
-                    
-                    if (!checkOverlap(x, y, itemSize, gameState.positions, 8)) {
-                        const item = createNumberItem(i, x, y, itemSize);
-                        board.appendChild(item);
-                        gameState.items.push(item);
-                        gameState.positions.push({ x, y, size: itemSize });
-                        placed = true;
-                    }
-                    attempts++;
-                }
-                
-                // 配置できない場合はグリッド配置
-                if (!placed) {
-                    const gridCols = Math.floor(boardWidth / (itemSize + 10));
-                    const row = Math.floor((i - 1) / gridCols);
-                    const col = (i - 1) % gridCols;
-                    const x = col * (itemSize + 10) + 10;
-                    const y = row * (itemSize + 10) + 10;
-                    
-                    const item = createNumberItem(i, x, y, itemSize);
-                    board.appendChild(item);
-                    gameState.items.push(item);
-                    gameState.positions.push({ x, y, size: itemSize });
-                }
-            }
-            
-            updateStatus();
-            startTimer();
-        }
-
-        // フルスクリーン時のアイテム移動
-        function moveItemsToFullscreen() {
-            const items = Array.from(document.querySelectorAll('.number-item'));
-            const fullBoard = elements.fullscreenBoard;
-            const itemSize = window.innerWidth < 600 ? 45 : 50;
-            
-            gameState.positions = [];
-            
-            // フルスクリーンボードのサイズ
-            const boardWidth = window.innerWidth;
-            const boardHeight = window.innerHeight;
-            
-            items.forEach((item) => {
-                let placed = false;
-                let attempts = 0;
-                const maxAttempts = 200;
-                
-                while (!placed && attempts < maxAttempts) {
-                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
-                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
-                    
-                    if (!checkOverlap(x, y, itemSize, gameState.positions, 10)) {
-                        item.style.left = x + 'px';
-                        item.style.top = y + 'px';
-                        gameState.positions.push({ x, y, size: itemSize });
-                        placed = true;
-                    }
-                    attempts++;
-                }
-                
-                // 配置できない場合はグリッド配置
-                if (!placed) {
-                    const gridCols = Math.floor((boardWidth - 200) / (itemSize + 10));
-                    const index = gameState.positions.length;
-                    const row = Math.floor(index / gridCols);
-                    const col = index % gridCols;
-                    const x = col * (itemSize + 10) + 10;
-                    const y = row * (itemSize + 10) + 100; // 上部は終了ボタン用
-                    
-                    item.style.left = x + 'px';
-                    item.style.top = y + 'px';
-                    gameState.positions.push({ x, y, size: itemSize });
-                }
-                
-                fullBoard.appendChild(item);
-            });
-        }
-
-        // 通常モードへのアイテム移動
-        function moveItemsToNormal() {
-            const items = Array.from(elements.fullscreenBoard.querySelectorAll('.number-item'));
-            const normalBoard = elements.gameBoard;
-            
-            items.forEach(item => {
-                normalBoard.appendChild(item);
-            });
-        }
-
-        // 数字アイテムを作成
+        // 数字アイテムを作成（アルファベット対応改善）
         function createNumberItem(value, x, y, size) {
             const item = document.createElement('div');
             item.className = `number-item color-${(value - 1) % 8}`;
-            item.textContent = gameState.gameType === 'numbers' ? value : 
-                             String.fromCharCode(64 + value);
+            
+            // 表示テキストの決定
+            let displayText;
+            if (gameState.gameType === 'numbers') {
+                displayText = value;
+            } else {
+                // アルファベット表示の改善
+                if (value <= 26) {
+                    // 1-26: A-Z
+                    displayText = String.fromCharCode(64 + value);
+                } else {
+                    // 27以降: AA, AB, AC...
+                    const firstIndex = Math.floor((value - 27) / 26);
+                    const secondIndex = (value - 27) % 26;
+                    const firstLetter = String.fromCharCode(65 + firstIndex);
+                    const secondLetter = String.fromCharCode(65 + secondIndex);
+                    displayText = firstLetter + secondLetter;
+                }
+            }
+            
+            item.textContent = displayText;
             item.style.left = x + 'px';
             item.style.top = y + 'px';
             item.style.width = size + 'px';
             item.style.height = size + 'px';
             item.dataset.value = value;
             
-            // クリックイベント
             item.addEventListener('click', (e) => handleItemClick(e, item, value));
             item.addEventListener('touchstart', (e) => {
                 e.preventDefault();
@@ -1092,11 +1043,22 @@
             }
         }
 
-        // ステータス更新
+        // ステータス更新（アルファベット対応改善）
         function updateStatus() {
-            const nextValue = gameState.gameType === 'numbers' ? 
-                            gameState.currentNumber : 
-                            String.fromCharCode(64 + gameState.currentNumber);
+            let nextValue;
+            if (gameState.gameType === 'numbers') {
+                nextValue = gameState.currentNumber;
+            } else {
+                if (gameState.currentNumber <= 26) {
+                    nextValue = String.fromCharCode(64 + gameState.currentNumber);
+                } else {
+                    const firstIndex = Math.floor((gameState.currentNumber - 27) / 26);
+                    const secondIndex = (gameState.currentNumber - 27) % 26;
+                    const firstLetter = String.fromCharCode(65 + firstIndex);
+                    const secondLetter = String.fromCharCode(65 + secondIndex);
+                    nextValue = firstLetter + secondLetter;
+                }
+            }
             
             elements.nextNumber.textContent = nextValue;
             elements.remaining.textContent = gameState.itemCount - gameState.currentNumber + 1;
@@ -1114,6 +1076,37 @@
             }, 100);
         }
 
+        // 終了ボタン
+        elements.quitButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('ゲームを終了しますか？')) {
+                quitGame();
+            }
+        });
+
+        function quitGame() {
+            gameState.isPlaying = false;
+            clearInterval(gameState.timerInterval);
+            
+            document.querySelectorAll('.number-item').forEach(item => item.remove());
+            
+            elements.startScreen.style.display = 'flex';
+            elements.resultScreen.style.display = 'none';
+            elements.quitButton.classList.remove('show');
+            elements.quitButton.style.display = 'none';
+            elements.globalQuitButton.style.display = 'none';
+            
+            elements.nextNumber.textContent = '1';
+            elements.timer.textContent = '00:00';
+            elements.remaining.textContent = gameState.itemCount;
+            
+            gameState.currentNumber = 1;
+            gameState.items = [];
+            gameState.positions = [];
+            
+            exitFullscreenMode();
+        }
+
         // ゲーム終了
         function endGame() {
             gameState.isPlaying = false;
@@ -1128,14 +1121,17 @@
             
             // 終了ボタンを非表示
             elements.quitButton.classList.remove('show');
+            elements.quitButton.style.display = 'none';
             
-            if (gameState.isFullscreen) {
-                exitFullscreenMode();
+            // グローバル終了ボタンも非表示
+            if (gameState.globalQuitButton) {
+                gameState.globalQuitButton.style.display = 'none';
             }
+            
+            exitFullscreenMode();
             
             elements.resultScreen.style.display = 'flex';
             
-            // 完了音
             if (gameState.soundEnabled) {
                 setTimeout(() => playSound(true), 100);
                 setTimeout(() => playSound(true), 300);
@@ -1143,7 +1139,7 @@
             }
         }
 
-        // イベントリスナー（音声初期化のためクリックイベントを使用）
+        // イベントリスナー
         elements.startButton.addEventListener('click', (e) => {
             e.stopPropagation();
             startGame();
@@ -1170,7 +1166,6 @@
             }
         }, { passive: false });
 
-        // 横スクロール防止
         document.addEventListener('touchmove', function(e) {
             if (!e.target.closest('.side-menu')) {
                 e.preventDefault();
