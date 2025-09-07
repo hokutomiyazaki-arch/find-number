@@ -255,35 +255,29 @@
             position: relative;
         }
 
-        /* 終了ボタン */
+        /* 終了ボタン - 重要な修正 */
         .quit-button {
-            position: absolute !important;
-            top: 10px !important;
-            right: 10px !important;
-            padding: 10px 25px;
-            background: #e74c3c;
-            color: white;
-            border: 2px solid white;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            z-index: 999999 !important;
-            display: none;
-            font-size: 1rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-        }
-
-        .quit-button.show {
-            display: block !important;
-        }
-
-        .quit-button.fullscreen {
             position: fixed !important;
             top: 20px !important;
             right: 20px !important;
             padding: 12px 30px;
+            background: #e74c3c;
+            color: white;
+            border: 3px solid white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 999999 !important;
+            display: none;
             font-size: 1.1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .quit-button.show {
+            display: block !important;
         }
 
         .quit-button:hover {
@@ -358,6 +352,25 @@
             align-items: center;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
             min-height: 60px;
+        }
+
+        /* フルスクリーン時のステータスバー */
+        .fullscreen-status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 99999;
+        }
+
+        .fullscreen-status-bar.show {
+            display: flex;
         }
 
         .status-item {
@@ -568,6 +581,8 @@
             .quit-button {
                 padding: 10px 20px;
                 font-size: 1rem;
+                top: 15px !important;
+                right: 15px !important;
             }
         }
     </style>
@@ -586,6 +601,24 @@
         <p>ホーム画面に追加して、アプリとして使用できます！</p>
         <button class="install-btn" id="installBtn">インストール</button>
         <button class="dismiss-btn" id="dismissBtn">後で</button>
+    </div>
+
+    <!-- グローバル終了ボタン（フルスクリーン時用） -->
+    <button class="quit-button" id="globalQuitButton">終了</button>
+
+    <!-- フルスクリーン時のステータスバー -->
+    <div class="fullscreen-status-bar" id="fullscreenStatusBar">
+        <div class="status-item">
+            <div class="status-label">次の番号</div>
+            <div class="status-value" id="fsNextNumber">1</div>
+        </div>
+        <div class="status-item">
+            <div class="timer" id="fsTimer">00:00</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">残り</div>
+            <div class="status-value" id="fsRemaining">20</div>
+        </div>
     </div>
 
     <div class="container" id="mainContainer">
@@ -657,9 +690,6 @@
                     <div class="result-time" id="resultTime">00:00</div>
                     <button class="start-button" id="restartButton">もう一度</button>
                 </div>
-                
-                <!-- 終了ボタン（ゲームエリア内） -->
-                <button class="quit-button" id="quitButton">終了</button>
             </div>
         </div>
 
@@ -788,10 +818,14 @@
             itemCount: document.getElementById('itemCount'),
             soundToggle: document.getElementById('soundToggle'),
             fullscreenBtn: document.getElementById('fullscreenBtn'),
-            quitButton: document.getElementById('quitButton'),
+            globalQuitButton: document.getElementById('globalQuitButton'),
             mainContainer: document.getElementById('mainContainer'),
             fullscreenContainer: document.getElementById('fullscreenContainer'),
-            fullscreenBoard: document.getElementById('fullscreenBoard')
+            fullscreenBoard: document.getElementById('fullscreenBoard'),
+            fullscreenStatusBar: document.getElementById('fullscreenStatusBar'),
+            fsNextNumber: document.getElementById('fsNextNumber'),
+            fsTimer: document.getElementById('fsTimer'),
+            fsRemaining: document.getElementById('fsRemaining')
         };
 
         // スプラッシュスクリーン
@@ -845,7 +879,6 @@
             
             elements.startScreen.style.display = 'none';
             elements.resultScreen.style.display = 'none';
-            elements.quitButton.classList.add('show'); // 終了ボタンを表示
             
             // まずアイテムを配置
             placeItems();
@@ -855,10 +888,6 @@
             // その後、自動的に全画面化
             setTimeout(() => {
                 enterFullscreenMode();
-                // 全画面化後にアイテムを再配置
-                setTimeout(() => {
-                    placeItems();
-                }, 200);
             }, 100);
         }
 
@@ -869,7 +898,8 @@
             gameState.isFullscreen = true;
             elements.mainContainer.classList.add('fullscreen-mode');
             elements.fullscreenContainer.classList.add('active');
-            elements.quitButton.classList.add('fullscreen');
+            elements.globalQuitButton.classList.add('show');
+            elements.fullscreenStatusBar.classList.add('show');
             
             // フルスクリーンAPIを使用
             if (document.documentElement.requestFullscreen) {
@@ -883,6 +913,11 @@
             } else if (document.documentElement.msRequestFullscreen) {
                 document.documentElement.msRequestFullscreen();
             }
+            
+            // フルスクリーンモードでアイテムを再配置
+            setTimeout(() => {
+                placeItems();
+            }, 200);
         }
 
         // フルスクリーンモードを終了
@@ -890,7 +925,8 @@
             gameState.isFullscreen = false;
             elements.mainContainer.classList.remove('fullscreen-mode');
             elements.fullscreenContainer.classList.remove('active');
-            elements.quitButton.classList.remove('fullscreen');
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
             
             if (document.exitFullscreen) {
                 document.exitFullscreen();
@@ -915,7 +951,7 @@
             
             // ボードサイズを取得
             const boardWidth = gameState.isFullscreen ? window.innerWidth : board.clientWidth;
-            const boardHeight = gameState.isFullscreen ? window.innerHeight : board.clientHeight;
+            const boardHeight = gameState.isFullscreen ? (window.innerHeight - 80) : board.clientHeight;
             
             // 終了ボタンのエリアを考慮
             const quitButtonArea = {
@@ -975,22 +1011,18 @@
             return false;
         }
 
-        // 数字アイテムを作成（アルファベット対応改善）
+        // 数字アイテムを作成
         function createNumberItem(value, x, y, size) {
             const item = document.createElement('div');
             item.className = `number-item color-${(value - 1) % 8}`;
             
-            // 表示テキストの決定
             let displayText;
             if (gameState.gameType === 'numbers') {
                 displayText = value;
             } else {
-                // アルファベット表示の改善
                 if (value <= 26) {
-                    // 1-26: A-Z
                     displayText = String.fromCharCode(64 + value);
                 } else {
-                    // 27以降: AA, AB, AC...
                     const firstIndex = Math.floor((value - 27) / 26);
                     const secondIndex = (value - 27) % 26;
                     const firstLetter = String.fromCharCode(65 + firstIndex);
@@ -1043,7 +1075,7 @@
             }
         }
 
-        // ステータス更新（アルファベット対応改善）
+        // ステータス更新
         function updateStatus() {
             let nextValue;
             if (gameState.gameType === 'numbers') {
@@ -1060,8 +1092,15 @@
                 }
             }
             
+            const remaining = gameState.itemCount - gameState.currentNumber + 1;
+            
+            // 通常ステータスバー
             elements.nextNumber.textContent = nextValue;
-            elements.remaining.textContent = gameState.itemCount - gameState.currentNumber + 1;
+            elements.remaining.textContent = remaining;
+            
+            // フルスクリーンステータスバー
+            elements.fsNextNumber.textContent = nextValue;
+            elements.fsRemaining.textContent = remaining;
         }
 
         // タイマー
@@ -1071,13 +1110,15 @@
                 const minutes = Math.floor(elapsed / 60000);
                 const seconds = Math.floor((elapsed % 60000) / 1000);
                 
-                elements.timer.textContent = 
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                elements.timer.textContent = timeStr;
+                elements.fsTimer.textContent = timeStr;
             }, 100);
         }
 
-        // 終了ボタン
-        elements.quitButton.addEventListener('click', (e) => {
+        // グローバル終了ボタン
+        elements.globalQuitButton.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm('ゲームを終了しますか？')) {
                 quitGame();
@@ -1092,13 +1133,15 @@
             
             elements.startScreen.style.display = 'flex';
             elements.resultScreen.style.display = 'none';
-            elements.quitButton.classList.remove('show');
-            elements.quitButton.style.display = 'none';
-            elements.globalQuitButton.style.display = 'none';
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
             
             elements.nextNumber.textContent = '1';
             elements.timer.textContent = '00:00';
             elements.remaining.textContent = gameState.itemCount;
+            elements.fsNextNumber.textContent = '1';
+            elements.fsTimer.textContent = '00:00';
+            elements.fsRemaining.textContent = gameState.itemCount;
             
             gameState.currentNumber = 1;
             gameState.items = [];
@@ -1119,14 +1162,8 @@
             elements.resultTime.textContent = 
                 `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             
-            // 終了ボタンを非表示
-            elements.quitButton.classList.remove('show');
-            elements.quitButton.style.display = 'none';
-            
-            // グローバル終了ボタンも非表示
-            if (gameState.globalQuitButton) {
-                gameState.globalQuitButton.style.display = 'none';
-            }
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
             
             exitFullscreenMode();
             
