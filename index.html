@@ -1011,10 +1011,17 @@
             // アイテムを生成
             const board = elements.gameBoard;
             const dimensions = gameState.boardDimensions;
-            const isFullscreen = !!document.fullscreenElement;
-            const itemSize = isFullscreen ? 65 : (window.innerWidth < 600 ? 42 : 55);
+            const itemSize = window.innerWidth < 600 ? 42 : 55;
             const padding = 15;
-            const quitButtonHeight = isFullscreen ? 70 : 50; // フルスクリーン時は大きめに
+            
+            // フルスクリーンかどうかを判定
+            const isFullscreen = !!document.fullscreenElement || 
+                               !!document.webkitFullscreenElement || 
+                               !!document.mozFullScreenElement || 
+                               !!document.msFullscreenElement;
+            
+            // 終了ボタンエリアの高さ（フルスクリーンの場合も考慮）
+            const quitButtonHeight = isFullscreen ? 70 : 50;
             
             // 既存のアイテムをクリア
             const existingItems = board.querySelectorAll('.number-item');
@@ -1313,9 +1320,16 @@
             }
         });
 
-        // イベントリスナー
-        elements.startButton.addEventListener('click', startGame);
-        elements.restartButton.addEventListener('click', startGame);
+        // イベントリスナー（ユーザー操作が必要な処理）
+        elements.startButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            startGame();
+        });
+        
+        elements.restartButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            startGame();
+        });
 
         // タッチイベントの最適化
         document.addEventListener('touchstart', function(e) {
@@ -1331,20 +1345,11 @@
         }, { passive: false });
 
         // Service Worker登録（PWA対応）
-        // GitHub Pages環境では sw.js ファイルが存在する場合のみ登録
-        if ('serviceWorker' in navigator && window.location.hostname !== 'www.claudeusercontent.com') {
+        if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                // GitHub Pages環境でのみService Workerを登録
-                if (window.location.hostname.includes('github.io')) {
-                    navigator.serviceWorker.register('./sw.js')
-                        .then(registration => {
-                            console.log('ServiceWorker registered:', registration);
-                        })
-                        .catch(err => {
-                            console.log('ServiceWorker registration skipped:', err.message);
-                            // Service Worker が見つからない場合はエラーを無視
-                        });
-                }
+                navigator.serviceWorker.register('sw.js').catch(err => {
+                    console.log('ServiceWorker registration failed:', err);
+                });
             });
         }
     </script>
