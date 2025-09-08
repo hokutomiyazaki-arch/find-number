@@ -452,22 +452,6 @@
             background-clip: text;
         }
 
-        /* フルスクリーンボタン */
-        .fullscreen-btn {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            padding: 8px 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            z-index: 101;
-        }
-
         /* スプラッシュスクリーン */
         .splash-screen {
             position: fixed;
@@ -622,7 +606,7 @@
     </div>
 
     <div class="container" id="mainContainer">
-        <!-- ヘッダー -->
+        <!-- ヘッダー（全画面ボタンなし） -->
         <div class="header">
             <button class="menu-toggle" id="menuToggle">
                 <span></span>
@@ -631,7 +615,6 @@
             </button>
             <img src="FNT512-transparent.png" alt="FNT Logo" class="logo">
             <h1 class="title">Speed Touch</h1>
-            <button class="fullscreen-btn" id="fullscreenBtn">全画面</button>
         </div>
 
         <!-- サイドメニュー -->
@@ -817,7 +800,6 @@
             gameType: document.getElementById('gameType'),
             itemCount: document.getElementById('itemCount'),
             soundToggle: document.getElementById('soundToggle'),
-            fullscreenBtn: document.getElementById('fullscreenBtn'),
             globalQuitButton: document.getElementById('globalQuitButton'),
             mainContainer: document.getElementById('mainContainer'),
             fullscreenContainer: document.getElementById('fullscreenContainer'),
@@ -863,9 +845,6 @@
         elements.soundToggle.addEventListener('change', (e) => {
             gameState.soundEnabled = e.target.value === 'on';
         });
-
-        // フルスクリーンボタン
-        elements.fullscreenBtn.addEventListener('click', enterFullscreenMode);
 
         // ゲーム開始
         function startGame() {
