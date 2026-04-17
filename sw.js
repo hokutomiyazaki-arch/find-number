@@ -1,5 +1,5 @@
 // Service Worker バージョン管理
-const CACHE_NAME = 'speed-touch-v1.0.0';
+const CACHE_NAME = 'speed-touch-v1.1.0';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,7 +7,6 @@ const urlsToCache = [
   './FNT512.png',
   './FNT512-transparent.png'
 ];
-
 // インストールイベント
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -29,7 +28,6 @@ self.addEventListener('install', event => {
   // 即座にアクティブ化
   self.skipWaiting();
 });
-
 // アクティベートイベント
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -47,7 +45,6 @@ self.addEventListener('activate', event => {
   // すぐに有効化
   self.clients.claim();
 });
-
 // フェッチイベント
 self.addEventListener('fetch', event => {
   event.respondWith(
