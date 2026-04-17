@@ -255,7 +255,7 @@
             position: relative;
         }
 
-        /* 終了ボタン - 重要な修正 */
+        /* 終了ボタン */
         .quit-button {
             position: fixed !important;
             top: 20px !important;
@@ -291,23 +291,25 @@
 
         .number-item {
             position: absolute;
-            width: 50px;
-            height: 50px;
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             z-index: 10;
             border: 3px solid rgba(255,255,255,0.5);
+            /* 文字の可視性を保つためのテキストシャドウ */
+            text-shadow: 
+                1px 1px 2px rgba(0,0,0,0.6),
+                -1px -1px 2px rgba(0,0,0,0.4),
+                0 0 4px rgba(0,0,0,0.4);
         }
 
-        /* 色のバリエーション */
+        /* カラフルモード（8色バリエーション） */
         .color-0 { background: linear-gradient(135deg, #FF6B6B, #C44569); }
         .color-1 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
         .color-2 { background: linear-gradient(135deg, #45B7D1, #2196F3); }
@@ -316,6 +318,32 @@
         .color-5 { background: linear-gradient(135deg, #DDA0DD, #BA55D3); }
         .color-6 { background: linear-gradient(135deg, #FF8C42, #FF6B35); }
         .color-7 { background: linear-gradient(135deg, #6C5CE7, #5F3DC4); }
+
+        /* 単色モード（すべてユニバーサルデザイン対応の高コントラスト配色） */
+        .color-red { 
+            background: linear-gradient(135deg, #E63946, #9D0208);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-blue { 
+            background: linear-gradient(135deg, #1D4ED8, #0B3380);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-green { 
+            background: linear-gradient(135deg, #2D8B3C, #14532D);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-black { 
+            background: linear-gradient(135deg, #3D3D3D, #0A0A0A);
+            border-color: rgba(255,255,255,0.8);
+        }
+
+        /* 黄色い文字（色4: FFEAA7, FDCB6E）の時だけ追加で暗い影を強化 */
+        .color-4 {
+            text-shadow: 
+                1px 1px 3px rgba(0,0,0,0.9),
+                -1px -1px 3px rgba(0,0,0,0.7),
+                0 0 6px rgba(0,0,0,0.7);
+        }
 
         .number-item:active {
             transform: scale(0.9);
@@ -354,7 +382,6 @@
             min-height: 60px;
         }
 
-        /* フルスクリーン時のステータスバー */
         .fullscreen-status-bar {
             position: fixed;
             bottom: 0;
@@ -556,12 +583,6 @@
         }
 
         @media (max-width: 600px) {
-            .number-item {
-                width: 45px;
-                height: 45px;
-                font-size: 1.1rem;
-            }
-            
             .quit-button {
                 padding: 10px 20px;
                 font-size: 1rem;
@@ -606,7 +627,7 @@
     </div>
 
     <div class="container" id="mainContainer">
-        <!-- ヘッダー（全画面ボタンなし） -->
+        <!-- ヘッダー -->
         <div class="header">
             <button class="menu-toggle" id="menuToggle">
                 <span></span>
@@ -634,6 +655,26 @@
                         <option value="20">20個</option>
                         <option value="30">30個</option>
                         <option value="40">40個</option>
+                    </select>
+                </div>
+                <!-- 新規追加: 円のサイズ -->
+                <div class="menu-item">
+                    <label>円のサイズ</label>
+                    <select id="circleSize">
+                        <option value="medium">中（標準）</option>
+                        <option value="large">大</option>
+                        <option value="small">小</option>
+                    </select>
+                </div>
+                <!-- 新規追加: 円の色 -->
+                <div class="menu-item">
+                    <label>円の色</label>
+                    <select id="circleColor">
+                        <option value="colorful">カラフル（標準）</option>
+                        <option value="red">赤</option>
+                        <option value="blue">青</option>
+                        <option value="green">緑</option>
+                        <option value="black">黒</option>
                     </select>
                 </div>
             </div>
@@ -709,6 +750,8 @@
             isFullscreen: false,
             gameType: 'numbers',
             itemCount: 20,
+            circleSize: 'medium',     // 新規: 円のサイズ
+            circleColor: 'colorful',  // 新規: 円の色
             currentNumber: 1,
             items: [],
             startTime: null,
@@ -717,6 +760,22 @@
             positions: [],
             audioContext: null
         };
+
+        // 円サイズ設定（モバイル / PC）
+        const SIZE_CONFIG = {
+            small:  { mobile: 34, desktop: 40, font: 0.85 },
+            medium: { mobile: 45, desktop: 50, font: 1.2  },
+            large:  { mobile: 62, desktop: 72, font: 1.6  }
+        };
+
+        // 現在のサイズ設定を取得
+        function getItemSize() {
+            const config = SIZE_CONFIG[gameState.circleSize] || SIZE_CONFIG.medium;
+            return {
+                size: window.innerWidth < 600 ? config.mobile : config.desktop,
+                fontRem: config.font
+            };
+        }
 
         // 音声システムの初期化
         function initAudioContext() {
@@ -799,6 +858,8 @@
             remaining: document.getElementById('remaining'),
             gameType: document.getElementById('gameType'),
             itemCount: document.getElementById('itemCount'),
+            circleSize: document.getElementById('circleSize'),   // 新規
+            circleColor: document.getElementById('circleColor'), // 新規
             soundToggle: document.getElementById('soundToggle'),
             globalQuitButton: document.getElementById('globalQuitButton'),
             mainContainer: document.getElementById('mainContainer'),
@@ -842,6 +903,16 @@
             gameState.itemCount = parseInt(e.target.value);
         });
 
+        // 新規: 円サイズ変更
+        elements.circleSize.addEventListener('change', (e) => {
+            gameState.circleSize = e.target.value;
+        });
+
+        // 新規: 円の色変更
+        elements.circleColor.addEventListener('change', (e) => {
+            gameState.circleColor = e.target.value;
+        });
+
         elements.soundToggle.addEventListener('change', (e) => {
             gameState.soundEnabled = e.target.value === 'on';
         });
@@ -859,12 +930,10 @@
             elements.startScreen.style.display = 'none';
             elements.resultScreen.style.display = 'none';
             
-            // まずアイテムを配置
             placeItems();
             updateStatus();
             startTimer();
             
-            // その後、自動的に全画面化
             setTimeout(() => {
                 enterFullscreenMode();
             }, 100);
@@ -880,7 +949,6 @@
             elements.globalQuitButton.classList.add('show');
             elements.fullscreenStatusBar.classList.add('show');
             
-            // フルスクリーンAPIを使用
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(err => {
                     console.log('Fullscreen error:', err);
@@ -893,7 +961,6 @@
                 document.documentElement.msRequestFullscreen();
             }
             
-            // フルスクリーンモードでアイテムを再配置
             setTimeout(() => {
                 placeItems();
             }, 200);
@@ -921,18 +988,17 @@
         // アイテム配置
         function placeItems() {
             const board = gameState.isFullscreen ? elements.fullscreenBoard : elements.gameBoard;
-            const itemSize = window.innerWidth < 600 ? 45 : 50;
+            const { size: itemSize, fontRem } = getItemSize();
             
             // 既存のアイテムをクリア
             document.querySelectorAll('.number-item').forEach(item => item.remove());
             gameState.positions = [];
             gameState.items = [];
             
-            // ボードサイズを取得
             const boardWidth = gameState.isFullscreen ? window.innerWidth : board.clientWidth;
             const boardHeight = gameState.isFullscreen ? (window.innerHeight - 80) : board.clientHeight;
             
-            // 終了ボタンのエリアを考慮
+            // 終了ボタンのエリア
             const quitButtonArea = {
                 x: boardWidth - 150,
                 y: 0,
@@ -952,7 +1018,7 @@
                     const inQuitArea = (x + itemSize > quitButtonArea.x && y < quitButtonArea.height);
                     
                     if (!inQuitArea && !checkOverlap(x, y, itemSize, gameState.positions, 8)) {
-                        const item = createNumberItem(i, x, y, itemSize);
+                        const item = createNumberItem(i, x, y, itemSize, fontRem);
                         board.appendChild(item);
                         gameState.items.push(item);
                         gameState.positions.push({ x, y, size: itemSize });
@@ -968,7 +1034,7 @@
                     let x = col * (itemSize + 10) + 10;
                     let y = row * (itemSize + 10) + 90;
                     
-                    const item = createNumberItem(i, x, y, itemSize);
+                    const item = createNumberItem(i, x, y, itemSize, fontRem);
                     board.appendChild(item);
                     gameState.items.push(item);
                     gameState.positions.push({ x, y, size: itemSize });
@@ -990,10 +1056,18 @@
             return false;
         }
 
+        // 色クラスを取得
+        function getColorClass(value) {
+            if (gameState.circleColor === 'colorful') {
+                return `color-${(value - 1) % 8}`;
+            }
+            return `color-${gameState.circleColor}`;
+        }
+
         // 数字アイテムを作成
-        function createNumberItem(value, x, y, size) {
+        function createNumberItem(value, x, y, size, fontRem) {
             const item = document.createElement('div');
-            item.className = `number-item color-${(value - 1) % 8}`;
+            item.className = `number-item ${getColorClass(value)}`;
             
             let displayText;
             if (gameState.gameType === 'numbers') {
@@ -1015,6 +1089,14 @@
             item.style.top = y + 'px';
             item.style.width = size + 'px';
             item.style.height = size + 'px';
+            
+            // 2文字のアルファベットの場合はフォントをさらに縮小
+            let finalFontRem = fontRem;
+            if (gameState.gameType === 'alphabet' && value > 26) {
+                finalFontRem = fontRem * 0.75;
+            }
+            item.style.fontSize = finalFontRem + 'rem';
+            
             item.dataset.value = value;
             
             item.addEventListener('click', (e) => handleItemClick(e, item, value));
@@ -1073,11 +1155,8 @@
             
             const remaining = gameState.itemCount - gameState.currentNumber + 1;
             
-            // 通常ステータスバー
             elements.nextNumber.textContent = nextValue;
             elements.remaining.textContent = remaining;
-            
-            // フルスクリーンステータスバー
             elements.fsNextNumber.textContent = nextValue;
             elements.fsRemaining.textContent = remaining;
         }
