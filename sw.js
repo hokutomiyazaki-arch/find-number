@@ -1,83 +1,1271 @@
-// Service Worker バージョン管理
-const CACHE_NAME = 'speed-touch-v1.1.0';
-const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './FNT512.png',
-  './FNT512-transparent.png'
-];
-// インストールイベント
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        // 各ファイルを個別にキャッシュし、エラーをスキップ
-        return Promise.all(
-          urlsToCache.map(url => {
-            return cache.add(url).catch(err => {
-              console.warn(`Failed to cache ${url}:`, err);
-              // エラーが発生してもインストールは続行
-              return Promise.resolve();
-            });
-          })
-        );
-      })
-  );
-  // 即座にアクティブ化
-  self.skipWaiting();
-});
-// アクティベートイベント
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  // すぐに有効化
-  self.clients.claim();
-});
-// フェッチイベント
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // キャッシュがあればそれを返す
-        if (response) {
-          return response;
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <!-- PWA設定 -->
+    <meta name="application-name" content="Speed Touch">
+    <meta name="apple-mobile-web-app-title" content="Speed Touch">
+    <meta name="description" content="数字を順番にタップする認知トレーニングゲーム">
+    
+    <!-- アイコン設定 -->
+    <link rel="icon" href="FNT512.png">
+    <link rel="apple-touch-icon" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="FNT512.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="FNT512.png">
+    
+    <!-- テーマカラー -->
+    <meta name="theme-color" content="#667eea">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <title>Speed Touch - 数字順番タッチゲーム</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
         }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container.fullscreen-mode {
+            display: none !important;
+        }
+
+        /* フルスクリーンゲームコンテナ */
+        .fullscreen-game-container {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 10000;
+        }
+
+        .fullscreen-game-container.active {
+            display: block;
+        }
+
+        .fullscreen-game-board {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        /* ヘッダー */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 100;
+            min-height: 60px;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+        }
+
+        .title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* メニューボタン */
+        .menu-toggle {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 4px;
+            z-index: 101;
+        }
+
+        .menu-toggle span {
+            width: 20px;
+            height: 2px;
+            background: white;
+            transition: all 0.3s;
+            pointer-events: none;
+        }
+
+        .menu-toggle.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+
+        .menu-toggle.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .menu-toggle.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* サイドメニュー */
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 280px;
+            height: 100vh;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            transition: left 0.3s;
+            z-index: 99;
+            padding: 60px 20px 20px;
+            overflow-y: auto;
+        }
+
+        .side-menu.active {
+            left: 0;
+        }
+
+        .menu-section {
+            margin-bottom: 25px;
+        }
+
+        .menu-section h3 {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .menu-item {
+            margin-bottom: 15px;
+        }
+
+        .menu-item label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .menu-item select,
+        .menu-item button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 1rem;
+        }
+
+        .menu-item button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* トレーニング説明 */
+        .instructions {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px;
+            margin: 5px 10px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            text-align: left;
+        }
+
+        .instructions h3 {
+            font-size: 1rem;
+            color: #667eea;
+            margin-bottom: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .instructions .highlight {
+            color: #764ba2;
+            font-weight: 600;
+        }
+
+        /* ゲームエリア */
+        .game-area {
+            flex: 1;
+            position: relative;
+            margin: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .game-board {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 終了ボタン */
+        .quit-button {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            padding: 12px 30px;
+            background: #e74c3c;
+            color: white;
+            border: 3px solid white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 999999 !important;
+            display: none;
+            font-size: 1.1rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            transition: all 0.2s;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .quit-button.show {
+            display: block !important;
+        }
+
+        .quit-button:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
+        .quit-button:active {
+            transform: scale(0.95);
+        }
+
+        .number-item {
+            position: absolute;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10;
+            border: 3px solid rgba(255,255,255,0.5);
+            /* 文字の可視性を保つためのテキストシャドウ */
+            text-shadow: 
+                1px 1px 2px rgba(0,0,0,0.6),
+                -1px -1px 2px rgba(0,0,0,0.4),
+                0 0 4px rgba(0,0,0,0.4);
+        }
+
+        /* カラフルモード（8色バリエーション） */
+        .color-0 { background: linear-gradient(135deg, #FF6B6B, #C44569); }
+        .color-1 { background: linear-gradient(135deg, #4ECDC4, #44A08D); }
+        .color-2 { background: linear-gradient(135deg, #45B7D1, #2196F3); }
+        .color-3 { background: linear-gradient(135deg, #96CEB4, #59A985); }
+        .color-4 { background: linear-gradient(135deg, #FFEAA7, #FDCB6E); }
+        .color-5 { background: linear-gradient(135deg, #DDA0DD, #BA55D3); }
+        .color-6 { background: linear-gradient(135deg, #FF8C42, #FF6B35); }
+        .color-7 { background: linear-gradient(135deg, #6C5CE7, #5F3DC4); }
+
+        /* 単色モード（すべてユニバーサルデザイン対応の高コントラスト配色） */
+        .color-red { 
+            background: linear-gradient(135deg, #E63946, #9D0208);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-blue { 
+            background: linear-gradient(135deg, #1D4ED8, #0B3380);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-green { 
+            background: linear-gradient(135deg, #2D8B3C, #14532D);
+            border-color: rgba(255,255,255,0.7);
+        }
+        .color-black { 
+            background: linear-gradient(135deg, #3D3D3D, #0A0A0A);
+            border-color: rgba(255,255,255,0.8);
+        }
+
+        /* 黄色い文字（色4: FFEAA7, FDCB6E）の時だけ追加で暗い影を強化 */
+        .color-4 {
+            text-shadow: 
+                1px 1px 3px rgba(0,0,0,0.9),
+                -1px -1px 3px rgba(0,0,0,0.7),
+                0 0 6px rgba(0,0,0,0.7);
+        }
+
+        .number-item:active {
+            transform: scale(0.9);
+        }
+
+        .number-item.found {
+            animation: found 0.5s ease forwards;
+            pointer-events: none;
+        }
+
+        .number-item.error {
+            animation: shake 0.5s;
+            background: #e74c3c !important;
+        }
+
+        @keyframes found {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); opacity: 0.7; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        /* ステータスバー */
+        .status-bar {
+            background: white;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            min-height: 60px;
+        }
+
+        .fullscreen-status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 10px;
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 99999;
+        }
+
+        .fullscreen-status-bar.show {
+            display: flex;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .timer {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        /* スタート画面 */
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .start-button {
+            padding: 20px 60px;
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .start-button:active {
+            transform: scale(0.95);
+        }
+
+        /* 結果画面 */
+        .result-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.98);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            padding: 20px;
+        }
+
+        .result-time {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* スプラッシュスクリーン */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+            padding: 20px;
+        }
+
+        .splash-screen.hide {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .splash-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 20px;
+        }
+
+        .splash-title {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .splash-subtitle {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .splash-copyright {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        /* フッター */
+        .footer {
+            background: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+            min-height: 40px;
+        }
+
+        /* インストール促進バナー */
+        .install-banner {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .install-banner.show {
+            display: block;
+        }
+
+        .install-banner button {
+            margin: 5px;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .install-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .dismiss-btn {
+            background: #ddd;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            .quit-button {
+                padding: 10px 20px;
+                font-size: 1rem;
+                top: 15px !important;
+                right: 15px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- スプラッシュスクリーン -->
+    <div class="splash-screen" id="splashScreen">
+        <img src="FNT512.png" alt="FNT Logo" class="splash-logo">
+        <div class="splash-title">Functional Neuro Training</div>
+        <div class="splash-subtitle">Speed Touch</div>
+        <div class="splash-copyright">© Functional Neuro Training</div>
+    </div>
+
+    <!-- インストール促進バナー -->
+    <div class="install-banner" id="installBanner">
+        <p>ホーム画面に追加して、アプリとして使用できます！</p>
+        <button class="install-btn" id="installBtn">インストール</button>
+        <button class="dismiss-btn" id="dismissBtn">後で</button>
+    </div>
+
+    <!-- グローバル終了ボタン（フルスクリーン時用） -->
+    <button class="quit-button" id="globalQuitButton">終了</button>
+
+    <!-- フルスクリーン時のステータスバー -->
+    <div class="fullscreen-status-bar" id="fullscreenStatusBar">
+        <div class="status-item">
+            <div class="status-label">次の番号</div>
+            <div class="status-value" id="fsNextNumber">1</div>
+        </div>
+        <div class="status-item">
+            <div class="timer" id="fsTimer">00:00</div>
+        </div>
+        <div class="status-item">
+            <div class="status-label">残り</div>
+            <div class="status-value" id="fsRemaining">20</div>
+        </div>
+    </div>
+
+    <div class="container" id="mainContainer">
+        <!-- ヘッダー -->
+        <div class="header">
+            <button class="menu-toggle" id="menuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <img src="FNT512-transparent.png" alt="FNT Logo" class="logo">
+            <h1 class="title">Speed Touch</h1>
+        </div>
+
+        <!-- サイドメニュー -->
+        <div class="side-menu" id="sideMenu">
+            <div class="menu-section">
+                <h3>ゲーム設定</h3>
+                <div class="menu-item">
+                    <label>タイプ</label>
+                    <select id="gameType">
+                        <option value="numbers">数字</option>
+                        <option value="alphabet">アルファベット</option>
+                    </select>
+                </div>
+                <div class="menu-item">
+                    <label>個数</label>
+                    <select id="itemCount">
+                        <option value="20">20個</option>
+                        <option value="30">30個</option>
+                        <option value="40">40個</option>
+                    </select>
+                </div>
+                <!-- 新規追加: 円のサイズ -->
+                <div class="menu-item">
+                    <label>円のサイズ</label>
+                    <select id="circleSize">
+                        <option value="medium">中（標準）</option>
+                        <option value="large">大</option>
+                        <option value="small">小</option>
+                    </select>
+                </div>
+                <!-- 新規追加: 円の色 -->
+                <div class="menu-item">
+                    <label>円の色</label>
+                    <select id="circleColor">
+                        <option value="colorful">カラフル（標準）</option>
+                        <option value="red">赤</option>
+                        <option value="blue">青</option>
+                        <option value="green">緑</option>
+                        <option value="black">黒</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="menu-section">
+                <h3>サウンド</h3>
+                <div class="menu-item">
+                    <label>効果音</label>
+                    <select id="soundToggle">
+                        <option value="on">ON</option>
+                        <option value="off">OFF</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- トレーニング説明 -->
+        <div class="instructions">
+            <h3>【トレーニング方法】</h3>
+            画面に表示される数字/アルファベットを順番にタップしてください。<br>
+            <span class="highlight">正確なタッチ</span>は小脳の外側部、
+            <span class="highlight">数字の位置探索</span>は視覚の背側経路（頭頂葉）、
+            <span class="highlight">文字認識</span>は腹側経路（側頭葉）を活性化します。
+        </div>
+
+        <!-- ゲームエリア -->
+        <div class="game-area">
+            <div class="game-board" id="gameBoard">
+                <!-- スタート画面 -->
+                <div class="start-screen" id="startScreen">
+                    <button class="start-button" id="startButton">START</button>
+                </div>
+                
+                <!-- 結果画面 -->
+                <div class="result-screen" id="resultScreen">
+                    <h2 style="font-size: 2rem; color: #667eea;">完了！</h2>
+                    <div class="result-time" id="resultTime">00:00</div>
+                    <button class="start-button" id="restartButton">もう一度</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ステータスバー -->
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-label">次の番号</div>
+                <div class="status-value" id="nextNumber">1</div>
+            </div>
+            <div class="status-item">
+                <div class="timer" id="timer">00:00</div>
+            </div>
+            <div class="status-item">
+                <div class="status-label">残り</div>
+                <div class="status-value" id="remaining">20</div>
+            </div>
+        </div>
+
+        <!-- フッター -->
+        <div class="footer">
+            © Functional Neuro Training
+        </div>
+    </div>
+
+    <!-- フルスクリーンゲームコンテナ -->
+    <div class="fullscreen-game-container" id="fullscreenContainer">
+        <div class="fullscreen-game-board" id="fullscreenBoard"></div>
+    </div>
+
+    <script>
+        // ゲーム状態管理
+        let gameState = {
+            isPlaying: false,
+            isFullscreen: false,
+            gameType: 'numbers',
+            itemCount: 20,
+            circleSize: 'medium',     // 新規: 円のサイズ
+            circleColor: 'colorful',  // 新規: 円の色
+            currentNumber: 1,
+            items: [],
+            startTime: null,
+            timerInterval: null,
+            soundEnabled: true,
+            positions: [],
+            audioContext: null
+        };
+
+        // 円サイズ設定（モバイル / PC）
+        const SIZE_CONFIG = {
+            small:  { mobile: 34, desktop: 40, font: 0.85 },
+            medium: { mobile: 45, desktop: 50, font: 1.2  },
+            large:  { mobile: 62, desktop: 72, font: 1.6  }
+        };
+
+        // 現在のサイズ設定を取得
+        function getItemSize() {
+            const config = SIZE_CONFIG[gameState.circleSize] || SIZE_CONFIG.medium;
+            return {
+                size: window.innerWidth < 600 ? config.mobile : config.desktop,
+                fontRem: config.font
+            };
+        }
+
+        // 音声システムの初期化
+        function initAudioContext() {
+            if (!gameState.audioContext) {
+                gameState.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (gameState.audioContext.state === 'suspended') {
+                gameState.audioContext.resume();
+            }
+        }
+
+        // 音を鳴らす
+        function playSound(success) {
+            if (!gameState.soundEnabled) return;
+            
+            try {
+                initAudioContext();
+                const ctx = gameState.audioContext;
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+                
+                if (success) {
+                    oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+                } else {
+                    oscillator.frequency.setValueAtTime(200, ctx.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
+                }
+                
+                gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+                
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.3);
+            } catch (e) {
+                console.log('音声エラー:', e);
+            }
+        }
+
+        // PWAインストール
+        let deferredPrompt;
         
-        // キャッシュがなければネットワークから取得
-        return fetch(event.request).then(response => {
-          // 無効なレスポンスはキャッシュしない
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          
-          // レスポンスをクローンしてキャッシュに保存
-          const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
-          
-          return response;
-        }).catch(error => {
-          console.error('Fetch failed:', error);
-          // オフライン時のフォールバック
-          if (event.request.destination === 'document') {
-            return caches.match('./index.html');
-          }
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            setTimeout(() => {
+                document.getElementById('installBanner').classList.add('show');
+            }, 3000);
         });
-      })
-  );
-});
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            }
+            document.getElementById('installBanner').classList.remove('show');
+        });
+
+        document.getElementById('dismissBtn').addEventListener('click', () => {
+            document.getElementById('installBanner').classList.remove('show');
+        });
+
+        // DOM要素
+        const elements = {
+            splashScreen: document.getElementById('splashScreen'),
+            menuToggle: document.getElementById('menuToggle'),
+            sideMenu: document.getElementById('sideMenu'),
+            gameBoard: document.getElementById('gameBoard'),
+            startScreen: document.getElementById('startScreen'),
+            startButton: document.getElementById('startButton'),
+            resultScreen: document.getElementById('resultScreen'),
+            resultTime: document.getElementById('resultTime'),
+            restartButton: document.getElementById('restartButton'),
+            nextNumber: document.getElementById('nextNumber'),
+            timer: document.getElementById('timer'),
+            remaining: document.getElementById('remaining'),
+            gameType: document.getElementById('gameType'),
+            itemCount: document.getElementById('itemCount'),
+            circleSize: document.getElementById('circleSize'),   // 新規
+            circleColor: document.getElementById('circleColor'), // 新規
+            soundToggle: document.getElementById('soundToggle'),
+            globalQuitButton: document.getElementById('globalQuitButton'),
+            mainContainer: document.getElementById('mainContainer'),
+            fullscreenContainer: document.getElementById('fullscreenContainer'),
+            fullscreenBoard: document.getElementById('fullscreenBoard'),
+            fullscreenStatusBar: document.getElementById('fullscreenStatusBar'),
+            fsNextNumber: document.getElementById('fsNextNumber'),
+            fsTimer: document.getElementById('fsTimer'),
+            fsRemaining: document.getElementById('fsRemaining')
+        };
+
+        // スプラッシュスクリーン
+        setTimeout(() => {
+            elements.splashScreen.classList.add('hide');
+            setTimeout(() => {
+                elements.splashScreen.style.display = 'none';
+            }, 500);
+        }, 2000);
+
+        // メニュー制御
+        elements.menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            elements.menuToggle.classList.toggle('active');
+            elements.sideMenu.classList.toggle('active');
+        });
+
+        // メニュー外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            if (!elements.sideMenu.contains(e.target) && !elements.menuToggle.contains(e.target)) {
+                elements.menuToggle.classList.remove('active');
+                elements.sideMenu.classList.remove('active');
+            }
+        });
+
+        // 設定変更
+        elements.gameType.addEventListener('change', (e) => {
+            gameState.gameType = e.target.value;
+        });
+
+        elements.itemCount.addEventListener('change', (e) => {
+            gameState.itemCount = parseInt(e.target.value);
+        });
+
+        // 新規: 円サイズ変更
+        elements.circleSize.addEventListener('change', (e) => {
+            gameState.circleSize = e.target.value;
+        });
+
+        // 新規: 円の色変更
+        elements.circleColor.addEventListener('change', (e) => {
+            gameState.circleColor = e.target.value;
+        });
+
+        elements.soundToggle.addEventListener('change', (e) => {
+            gameState.soundEnabled = e.target.value === 'on';
+        });
+
+        // ゲーム開始
+        function startGame() {
+            initAudioContext();
+            
+            gameState.isPlaying = true;
+            gameState.currentNumber = 1;
+            gameState.items = [];
+            gameState.positions = [];
+            gameState.startTime = Date.now();
+            
+            elements.startScreen.style.display = 'none';
+            elements.resultScreen.style.display = 'none';
+            
+            placeItems();
+            updateStatus();
+            startTimer();
+            
+            setTimeout(() => {
+                enterFullscreenMode();
+            }, 100);
+        }
+
+        // フルスクリーンモードに入る
+        function enterFullscreenMode() {
+            if (!gameState.isPlaying) return;
+            
+            gameState.isFullscreen = true;
+            elements.mainContainer.classList.add('fullscreen-mode');
+            elements.fullscreenContainer.classList.add('active');
+            elements.globalQuitButton.classList.add('show');
+            elements.fullscreenStatusBar.classList.add('show');
+            
+            if (document.documentElement.requestFullscreen) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log('Fullscreen error:', err);
+                });
+            } else if (document.documentElement.webkitRequestFullscreen) {
+                document.documentElement.webkitRequestFullscreen();
+            } else if (document.documentElement.mozRequestFullScreen) {
+                document.documentElement.mozRequestFullScreen();
+            } else if (document.documentElement.msRequestFullscreen) {
+                document.documentElement.msRequestFullscreen();
+            }
+            
+            setTimeout(() => {
+                placeItems();
+            }, 200);
+        }
+
+        // フルスクリーンモードを終了
+        function exitFullscreenMode() {
+            gameState.isFullscreen = false;
+            elements.mainContainer.classList.remove('fullscreen-mode');
+            elements.fullscreenContainer.classList.remove('active');
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
+            
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        // アイテム配置
+        function placeItems() {
+            const board = gameState.isFullscreen ? elements.fullscreenBoard : elements.gameBoard;
+            const { size: itemSize, fontRem } = getItemSize();
+            
+            // 既存のアイテムをクリア
+            document.querySelectorAll('.number-item').forEach(item => item.remove());
+            gameState.positions = [];
+            gameState.items = [];
+            
+            const boardWidth = gameState.isFullscreen ? window.innerWidth : board.clientWidth;
+            const boardHeight = gameState.isFullscreen ? (window.innerHeight - 80) : board.clientHeight;
+            
+            // 終了ボタンのエリア
+            const quitButtonArea = {
+                x: boardWidth - 150,
+                y: 0,
+                width: 150,
+                height: 80
+            };
+            
+            for (let i = 1; i <= gameState.itemCount; i++) {
+                let placed = false;
+                let attempts = 0;
+                const maxAttempts = 500;
+                
+                while (!placed && attempts < maxAttempts) {
+                    const x = Math.random() * (boardWidth - itemSize - 20) + 10;
+                    const y = Math.random() * (boardHeight - itemSize - 20) + 10;
+                    
+                    const inQuitArea = (x + itemSize > quitButtonArea.x && y < quitButtonArea.height);
+                    
+                    if (!inQuitArea && !checkOverlap(x, y, itemSize, gameState.positions, 8)) {
+                        const item = createNumberItem(i, x, y, itemSize, fontRem);
+                        board.appendChild(item);
+                        gameState.items.push(item);
+                        gameState.positions.push({ x, y, size: itemSize });
+                        placed = true;
+                    }
+                    attempts++;
+                }
+                
+                if (!placed) {
+                    const gridCols = Math.floor((boardWidth - 160) / (itemSize + 10));
+                    const row = Math.floor((i - 1) / gridCols);
+                    const col = (i - 1) % gridCols;
+                    let x = col * (itemSize + 10) + 10;
+                    let y = row * (itemSize + 10) + 90;
+                    
+                    const item = createNumberItem(i, x, y, itemSize, fontRem);
+                    board.appendChild(item);
+                    gameState.items.push(item);
+                    gameState.positions.push({ x, y, size: itemSize });
+                }
+            }
+        }
+
+        // アイテムの重なりチェック
+        function checkOverlap(x, y, size, positions, margin = 10) {
+            for (const pos of positions) {
+                const distance = Math.sqrt(
+                    Math.pow(x + size/2 - (pos.x + pos.size/2), 2) + 
+                    Math.pow(y + size/2 - (pos.y + pos.size/2), 2)
+                );
+                if (distance < (size + pos.size) / 2 + margin) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 色クラスを取得
+        function getColorClass(value) {
+            if (gameState.circleColor === 'colorful') {
+                return `color-${(value - 1) % 8}`;
+            }
+            return `color-${gameState.circleColor}`;
+        }
+
+        // 数字アイテムを作成
+        function createNumberItem(value, x, y, size, fontRem) {
+            const item = document.createElement('div');
+            item.className = `number-item ${getColorClass(value)}`;
+            
+            let displayText;
+            if (gameState.gameType === 'numbers') {
+                displayText = value;
+            } else {
+                if (value <= 26) {
+                    displayText = String.fromCharCode(64 + value);
+                } else {
+                    const firstIndex = Math.floor((value - 27) / 26);
+                    const secondIndex = (value - 27) % 26;
+                    const firstLetter = String.fromCharCode(65 + firstIndex);
+                    const secondLetter = String.fromCharCode(65 + secondIndex);
+                    displayText = firstLetter + secondLetter;
+                }
+            }
+            
+            item.textContent = displayText;
+            item.style.left = x + 'px';
+            item.style.top = y + 'px';
+            item.style.width = size + 'px';
+            item.style.height = size + 'px';
+            
+            // 2文字のアルファベットの場合はフォントをさらに縮小
+            let finalFontRem = fontRem;
+            if (gameState.gameType === 'alphabet' && value > 26) {
+                finalFontRem = fontRem * 0.75;
+            }
+            item.style.fontSize = finalFontRem + 'rem';
+            
+            item.dataset.value = value;
+            
+            item.addEventListener('click', (e) => handleItemClick(e, item, value));
+            item.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleItemClick(e, item, value);
+            });
+            
+            return item;
+        }
+
+        // アイテムクリック処理
+        function handleItemClick(e, item, value) {
+            e.stopPropagation();
+            if (!gameState.isPlaying) return;
+            
+            if (value === gameState.currentNumber) {
+                item.classList.add('found');
+                gameState.currentNumber++;
+                playSound(true);
+                
+                setTimeout(() => {
+                    item.remove();
+                }, 400);
+                
+                if (gameState.currentNumber > gameState.itemCount) {
+                    endGame();
+                } else {
+                    updateStatus();
+                }
+            } else {
+                item.classList.add('error');
+                playSound(false);
+                setTimeout(() => {
+                    item.classList.remove('error');
+                }, 500);
+            }
+        }
+
+        // ステータス更新
+        function updateStatus() {
+            let nextValue;
+            if (gameState.gameType === 'numbers') {
+                nextValue = gameState.currentNumber;
+            } else {
+                if (gameState.currentNumber <= 26) {
+                    nextValue = String.fromCharCode(64 + gameState.currentNumber);
+                } else {
+                    const firstIndex = Math.floor((gameState.currentNumber - 27) / 26);
+                    const secondIndex = (gameState.currentNumber - 27) % 26;
+                    const firstLetter = String.fromCharCode(65 + firstIndex);
+                    const secondLetter = String.fromCharCode(65 + secondIndex);
+                    nextValue = firstLetter + secondLetter;
+                }
+            }
+            
+            const remaining = gameState.itemCount - gameState.currentNumber + 1;
+            
+            elements.nextNumber.textContent = nextValue;
+            elements.remaining.textContent = remaining;
+            elements.fsNextNumber.textContent = nextValue;
+            elements.fsRemaining.textContent = remaining;
+        }
+
+        // タイマー
+        function startTimer() {
+            gameState.timerInterval = setInterval(() => {
+                const elapsed = Date.now() - gameState.startTime;
+                const minutes = Math.floor(elapsed / 60000);
+                const seconds = Math.floor((elapsed % 60000) / 1000);
+                
+                const timeStr = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                elements.timer.textContent = timeStr;
+                elements.fsTimer.textContent = timeStr;
+            }, 100);
+        }
+
+        // グローバル終了ボタン
+        elements.globalQuitButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm('ゲームを終了しますか？')) {
+                quitGame();
+            }
+        });
+
+        function quitGame() {
+            gameState.isPlaying = false;
+            clearInterval(gameState.timerInterval);
+            
+            document.querySelectorAll('.number-item').forEach(item => item.remove());
+            
+            elements.startScreen.style.display = 'flex';
+            elements.resultScreen.style.display = 'none';
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
+            
+            elements.nextNumber.textContent = '1';
+            elements.timer.textContent = '00:00';
+            elements.remaining.textContent = gameState.itemCount;
+            elements.fsNextNumber.textContent = '1';
+            elements.fsTimer.textContent = '00:00';
+            elements.fsRemaining.textContent = gameState.itemCount;
+            
+            gameState.currentNumber = 1;
+            gameState.items = [];
+            gameState.positions = [];
+            
+            exitFullscreenMode();
+        }
+
+        // ゲーム終了
+        function endGame() {
+            gameState.isPlaying = false;
+            clearInterval(gameState.timerInterval);
+            
+            const elapsed = Date.now() - gameState.startTime;
+            const minutes = Math.floor(elapsed / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            elements.resultTime.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            elements.globalQuitButton.classList.remove('show');
+            elements.fullscreenStatusBar.classList.remove('show');
+            
+            exitFullscreenMode();
+            
+            elements.resultScreen.style.display = 'flex';
+            
+            if (gameState.soundEnabled) {
+                setTimeout(() => playSound(true), 100);
+                setTimeout(() => playSound(true), 300);
+                setTimeout(() => playSound(true), 500);
+            }
+        }
+
+        // イベントリスナー
+        elements.startButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+        
+        elements.restartButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            startGame();
+        });
+
+        // Service Worker登録
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.log('ServiceWorker registration failed:', err);
+                });
+            });
+        }
+
+        // タッチイベント最適化
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!e.target.closest('.side-menu')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
+</body>
+</html>
